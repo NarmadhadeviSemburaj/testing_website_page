@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'db_config.php';
+include 'log_api.php'; // Include the logging API
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email_or_mobile = trim($_POST['email']);
@@ -23,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Fetch user details securely
-    $sql = "SELECT emp_name, is_admin, password, email FROM employees WHERE email = ? OR mobile_number = ?";
+    $sql = "SELECT emp_id, emp_name, is_admin, password, email FROM employees WHERE email = ? OR mobile_number = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $email_or_mobile, $email_or_mobile);
     $stmt->execute();
@@ -60,6 +61,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['user'] = $row['emp_name'];
         $_SESSION['is_admin'] = (int)$row['is_admin'] === 1;
         $_SESSION['last_activity'] = time();
+
+        // Log the login action
+        logUserAction(
+            $row['emp_id'], // user_id
+            $row['emp_name'], // username
+            'login', // action_type
+            'User logged in successfully', // action_description
+            $_SERVER['REQUEST_URI'], // endpoint
+            $_SERVER['REQUEST_METHOD'], // http_method
+            $_POST, // request_payload
+            200, // response_status
+            ['message' => 'Login successful'], // response_data
+            $_SERVER['REMOTE_ADDR'], // ip_address
+            $_SERVER['HTTP_USER_AGENT'] // user_agent
+        );
 
         header("Location: home.php");
         exit();

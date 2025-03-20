@@ -2,10 +2,15 @@
 session_start();
 if (isset($_SESSION['user'])) {
     session_regenerate_id(true); // Prevent session fixation
+		// After successful login in login.php
+	$_SESSION['emp_id'] = $row['emp_id']; // Set emp_id in the session
+	$_SESSION['user'] = $row['emp_name']; // Set username in the session
+	$_SESSION['is_admin'] = (int)$row['is_admin'] === 1; // Set admin status
     $_SESSION['last_activity'] = time();
     header("Location: home.php");
     exit();
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">

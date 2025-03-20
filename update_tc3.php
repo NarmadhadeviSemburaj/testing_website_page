@@ -1,15 +1,5 @@
 <?php
 session_start();
-// Set session timeout to 5 minutes (300 seconds)
-$timeout = 300; // 5 minutes in seconds
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
-    // Last request was more than 5 minutes ago
-    session_unset();     // Unset $_SESSION variable for this page
-    session_destroy();   // Destroy session data
-    header("Location: login.php");
-    exit();
-}
-$_SESSION['last_activity'] = time(); // Update last activity time stamp
 if (!isset($_SESSION['user'])) {
     header("Location: login.php");
     exit();
@@ -35,8 +25,37 @@ $sql_versions = "SELECT DISTINCT Version FROM testcase";
 $result_versions = $conn->query($sql_versions);
 
 // Preserve filter criteria after form submission
-$selected_product = $_POST['product_name'] ?? '';
-$selected_version = $_POST['version'] ?? '';
+$selected_product = $_POST['product_name'] ?? $_SESSION['selected_product'] ?? '';
+$selected_version = $_POST['version'] ?? $_SESSION['selected_version'] ?? '';
+
+// Store filters in session
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (isset($_POST['product_name'])) {
+        $_SESSION['selected_product'] = $_POST['product_name'];
+    }
+    if (isset($_POST['version'])) {
+        $_SESSION['selected_version'] = $_POST['version'];
+    }
+    
+    // Store device name and Android version in session
+    if (isset($_POST['device_name'])) {
+        $_SESSION['device_name'] = $_POST['device_name'];
+    }
+    if (isset($_POST['android_version'])) {
+        $_SESSION['android_version'] = $_POST['android_version'];
+    }
+    if (isset($_POST['reset'])) {
+        unset($_SESSION['device_name']);
+        unset($_SESSION['android_version']);
+        unset($_SESSION['selected_product']);
+        unset($_SESSION['selected_version']);
+        $selected_product = '';
+        $selected_version = '';
+    }
+}
+
+$device_name = $_SESSION['device_name'] ?? '';
+$android_version = $_SESSION['android_version'] ?? '';
 ?>
 
 <!DOCTYPE html>
@@ -49,9 +68,7 @@ $selected_version = $_POST['version'] ?? '';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Your existing CSS styles */
-		* Your existing CSS styles */
-		 html, body {
+        /* Your existing CSS styles */html, body {
             height: 100%;
             margin: 0;
             padding: 0;
@@ -115,11 +132,40 @@ $selected_version = $_POST['version'] ?? '';
         .admin-section h4 {
             font-size: 16px; /* Match this to the sidebar links' font size */
             cursor: pointer; /* Indicates it's clickable */
+            
         }
         .admin-section {
             margin-top: 20px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
+        }
+
+        /* User Info */
+        .user-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .user-info i {
+            font-size: 20px;
+            margin-right: 5px;
+        }
+
+        .user-info h4 {
+            font-size: 16px;
+            margin: 5px 0 0;
+            color: #333;
+        }
+        .admin-links {
+            display: none; /* Initially hidden */
+        }
+        .download-apk-btn {
+            position: absolute;
+            top: 60px; /* Adjusted position */
+            right: 40px;
+        }
+        .sidebar a i {
+            margin-right: 10px; /* Adjust spacing */
         }
         .card {
             margin-bottom: 20px;
@@ -131,6 +177,7 @@ $selected_version = $_POST['version'] ?? '';
             height: 100%; /* Make all cards the same height */
             display: flex;
             flex-direction: column;
+            transition: all 0.3s ease;
         }
         .card:hover {
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -176,6 +223,24 @@ $selected_version = $_POST['version'] ?? '';
         .hidden-form.active {
             display: block;
         }
+        .admin-links {
+            display: none; /* Initially hidden */
+            transition: all 0.3s ease; /* Smooth transition */
+        }
+
+        .admin-links.show {
+            display: block; /* Show the dropdown */
+        }
+		.view-more-btn {
+			color: #007bff;
+			cursor: pointer;
+			font-size: 14px;
+			margin-top: 5px;
+			text-align: right;
+		}
+		.view-more-btn:hover {
+			text-decoration: underline;
+		}
         .filter-row {
             display: flex;
             gap: 10px;
@@ -198,46 +263,56 @@ $selected_version = $_POST['version'] ?? '';
             font-size: 14px; /* Smaller button font size */
             padding: 6px 12px; /* Smaller padding for button */
         }
-            font-size: 16px; /* Match this to the sidebar links' font size */
-            cursor: pointer; /* Indicates it's clickable */
-            
+        /* New styles for highlighting active card */
+        .card.active-card {
+            border: 2px solid #007bff;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
         }
-        .admin-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+        /* Loading spinner */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s;
         }
-
-        /* User Info */
-        .user-info {
-            text-align: center;
-            margin-bottom: 20px;
+        .spinner-overlay.show {
+            visibility: visible;
+            opacity: 1;
         }
-
-        .user-info i {
-            font-size: 20px;
-            margin-right: 5px;
+        .submission-message {
+            display: none;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
         }
-
-        .user-info h4 {
-            font-size: 16px;
-            margin: 5px 0 0;
-            color: #333;
+        .submission-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
         }
-        .admin-links {
-            display: none; /* Initially hidden */
+        .submission-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
-        .download-apk-btn {
-            position: absolute;
-            top: 40px;                 
-            right: 40px;
-        }
-        .sidebar a i {
-            margin-right: 10px; /* Adjust spacing */
-		}
     </style>
 </head>
 <body>
+    <div class="spinner-overlay">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    
     <div class="wrapper">
         <!-- Sidebar -->
         <div class="sidebar-container">
@@ -262,7 +337,7 @@ $selected_version = $_POST['version'] ?? '';
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
 
-                <?php if ($_SESSION['is_admin']): ?>
+                <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
                     <div class="admin-section">
                         <h4 onclick="toggleAdminLinks()"><i class="fas fa-cogs"></i> Admin <i class="fas fa-chevron-down"></i></h4>
                         <div class="admin-links">
@@ -273,14 +348,13 @@ $selected_version = $_POST['version'] ?? '';
                                 <i class="fas fa-upload"></i> APK Admin
                             </a>
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-list-alt"></i> TCM
+                                <i class="fas fa-list-alt"></i> Test Case Manager
                             </a>
                         </div>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
-
         <!-- Main Content -->
         <div class="content-container">
             <!-- Download APK Button -->
@@ -288,15 +362,20 @@ $selected_version = $_POST['version'] ?? '';
                 <i class="fas fa-download"></i>
             </a>
 
+            <!-- Notification area for submission feedback -->
+            <div id="submission-message" class="submission-message"></div>
+
             <!-- Rest of the content -->
             <h3>Testing</h3>
-            <form method="POST" class="mb-4">
+            <form id="filter-form" method="POST" class="mb-4">
                 <div class="filter-row">
                     <div class="form-group">
                         <label for="product_name" class="form-label">Select Product:</label>
-                        <select name="product_name" required class="form-select">
+                        <select name="product_name" id="product_name" required class="form-select">
                             <option value="">-- Select Product --</option>
-                            <?php while ($row = $result_products->fetch_assoc()) { ?>
+                            <?php 
+                            $result_products->data_seek(0); // Reset the result pointer
+                            while ($row = $result_products->fetch_assoc()) { ?>
                                 <option value="<?= htmlspecialchars($row['Product_name']); ?>" <?= ($selected_product == $row['Product_name']) ? 'selected' : ''; ?>>
                                     <?= htmlspecialchars($row['Product_name']); ?>
                                 </option>
@@ -305,9 +384,11 @@ $selected_version = $_POST['version'] ?? '';
                     </div>
                     <div class="form-group">
                         <label for="version" class="form-label">Select Version:</label>
-                        <select name="version" required class="form-select">
+                        <select name="version" id="version" required class="form-select">
                             <option value="">-- Select Version --</option>
-                            <?php while ($row = $result_versions->fetch_assoc()) { ?>
+                            <?php 
+                            $result_versions->data_seek(0); // Reset the result pointer
+                            while ($row = $result_versions->fetch_assoc()) { ?>
                                 <option value="<?= htmlspecialchars($row['Version']); ?>" <?= ($selected_version == $row['Version']) ? 'selected' : ''; ?>>
                                     <?= htmlspecialchars($row['Version']); ?>
                                 </option>
@@ -316,213 +397,238 @@ $selected_version = $_POST['version'] ?? '';
                     </div>
                     <button type="submit" class="btn btn-primary">Filter</button>
                 </div>
+
+                <!-- Device Name and Android Version -->
+                <div class="filter-row mt-3">
+                    <div class="form-group">
+                        <label for="device_name" class="form-label">Device Name:</label>
+                        <input type="text" name="device_name" id="device_name" class="form-control" value="<?= htmlspecialchars($device_name); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="android_version" class="form-label">Android Version:</label>
+                        <input type="text" name="android_version" id="android_version" class="form-control" value="<?= htmlspecialchars($android_version); ?>" required>
+                    </div>
+                    <button type="submit" name="reset" class="btn btn-danger">Reset</button>
+                </div>
             </form>
 
-            <?php
-            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['product_name'], $_POST['version'])) {
-                $product_name = $_POST['product_name'];
-                $version = $_POST['version'];
+            <div id="test-cases-container">
+                <?php
+                if (!empty($selected_product) && !empty($selected_version)) {
+                    $sql = "SELECT * FROM testcase WHERE Product_name = ? AND Version = ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param("ss", $selected_product, $selected_version);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
 
-                $sql = "SELECT * FROM testcase WHERE Product_name = ? AND Version = ?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("ss", $product_name, $version);
-                $stmt->execute();
-                $result = $stmt->get_result();
-
-                if ($result->num_rows > 0) {
-                    echo "<h5 class='mt-4'>Test Cases for $product_name - $version </h5>";
-                    echo '<div class="row row-cols-1 row-cols-md-3 g-4">'; // Using Bootstrap grid with gutters
-                    while ($row = $result->fetch_assoc()) { 
-                        $testcase_id = $row['id']; // Correct column name
-                        $is_updated = !empty($row['tested_by_name']); // Check if the test case has been updated
-                    ?>
-                        <div class="col">
-                            <div class="card">
-                                <div class="card-title">
-                                    <i class="fas fa-folder"></i> <?= htmlspecialchars($row['Module_name']); ?>
-                                </div>
-                                <div class="card-details">
-                                    <p><i class="fas fa-align-left"></i> <strong>Description:</strong> <?= htmlspecialchars($row['description']); ?></p>
-                                    <p><i class="fas fa-list-ol"></i> <strong>Test Steps:</strong> <?= htmlspecialchars($row['test_steps']); ?></p>
-                                    <p><i class="fas fa-check-circle"></i> <strong>Preconditions:</strong> <?= htmlspecialchars($row['preconditions']); ?></p>
-                                    <p><i class="fas fa-clipboard-check"></i> <strong>Expected Result:</strong> <?= htmlspecialchars($row['expected_results']); ?></p>
-                                </div>
-                                <div class="update-btn">
-                                    <button class="btn btn-success btn-sm" onclick="toggleForm(<?= $testcase_id; ?>)" title="Update">
-                                        <i class="fas fa-edit"></i> 
-                                    </button>
-                                    <?php if ($is_updated): ?>
-                                        <i class="fas fa-check tick-icon" title="Test Case Updated"></i>
-                                    <?php endif; ?>
-                                </div>
-                                <!-- Update Form Inside the Card -->
-                                <div id="form-<?= $testcase_id; ?>" class="hidden-form">
-                                    <form id="updateForm-<?= $testcase_id; ?>">
-                                        <input type="hidden" name="id" value="<?= $testcase_id; ?>">
-                                        <input type="hidden" name="tested_by_name" value="<?= htmlspecialchars($_SESSION['user']) ?>">
-                                        <input type="hidden" name="tested_at" value="<?= date('Y-m-d H:i:s'); ?>">
-                                        
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <label for="actual_result">Actual Result:</label>
-                                                <textarea name="actual_result" class="form-control" required><?= htmlspecialchars($row['actual_result']); ?></textarea>
+                    if ($result->num_rows > 0) {
+                        echo "<h2 class='mt-4'>Test Cases for $selected_product - $selected_version</h2>";
+                        echo '<div class="row row-cols-1 row-cols-md-3 g-4" id="test-cards">';
+                        while ($row = $result->fetch_assoc()) { 
+                            $testcase_id = $row['id'];
+                            $is_updated = !empty($row['tested_by_name']);
+                        ?>
+                            <div class="col test-case-col" data-id="<?= $testcase_id ?>">
+                                <div class="card" id="card-<?= $testcase_id ?>">
+                                    <div class="card-title">
+                                        <i class="fas fa-folder"></i> <?= htmlspecialchars($row['Module_name']); ?>
+                                    </div>
+                                    <div class="card-details">
+										<p><i class="fas fa-align-left"></i> <strong>Description:</strong> <?= htmlspecialchars($row['description']); ?></p>
+										<p><i class="fas fa-list-ol"></i> <strong>Test Steps:</strong> <?= htmlspecialchars($row['test_steps']); ?></p>
+										<p><i class="fas fa-check-circle"></i> <strong>Preconditions:</strong> <?= htmlspecialchars($row['preconditions']); ?></p>
+										<p><i class="fas fa-clipboard-check"></i> <strong>Expected Result:</strong> <?= htmlspecialchars($row['expected_results']); ?></p>
+										<div class="view-more-btn">View More</div>
+									</div>
+                                    <div class="update-btn">
+                                        <button class="btn btn-success btn-sm toggle-form-btn" data-id="<?= $testcase_id; ?>" title="Update">
+                                            <i class="fas fa-edit"></i> 
+                                        </button>
+                                        <?php if ($is_updated): ?>
+                                            <i class="fas fa-check tick-icon" title="Test Case Updated"></i>
+                                        <?php endif; ?>
+                                    </div>
+                                    <!-- Update Form Inside the Card -->
+                                    <div id="form-<?= $testcase_id; ?>" class="hidden-form">
+                                        <form class="ajax-form" data-id="<?= $testcase_id; ?>" action="update_testcases.php" method="POST" enctype="multipart/form-data">
+                                            <input type="hidden" name="id" value="<?= $testcase_id; ?>">
+                                            <input type="hidden" name="tested_by_name" value="<?= htmlspecialchars($_SESSION['user']) ?>">
+                                            <input type="hidden" name="tested_at" value="<?= date('Y-m-d H:i:s'); ?>">
+                                            <input type="hidden" name="device_name" value="<?= htmlspecialchars($device_name); ?>">
+                                            <input type="hidden" name="android_version" value="<?= htmlspecialchars($android_version); ?>">
+                                            <input type="hidden" name="product_name" value="<?= htmlspecialchars($selected_product); ?>">
+                                            <input type="hidden" name="version" value="<?= htmlspecialchars($selected_version); ?>">
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <label for="actual_result_<?= $testcase_id; ?>">Actual Result:</label>
+                                                    <textarea id="actual_result_<?= $testcase_id; ?>" name="actual_result" class="form-control" required><?= htmlspecialchars($row['actual_result']); ?></textarea>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="file_attachment_<?= $testcase_id; ?>">Attach Screenshot:</label>
+                                                    <input type="file" id="file_attachment_<?= $testcase_id; ?>" name="file_attachment" class="form-control">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="testing_result_<?= $testcase_id; ?>">Testing Result:</label>
+                                                    <select id="testing_result_<?= $testcase_id; ?>" name="testing_result" class="form-select">
+                                                        <option value="Pass" <?= ($row['testing_result'] == 'Pass') ? 'selected' : ''; ?>>Pass</option>
+                                                        <option value="Fail" <?= ($row['testing_result'] == 'Fail') ? 'selected' : ''; ?>>Fail</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="bug_type_<?= $testcase_id; ?>">Bug Type:</label>
+                                                    <select id="bug_type_<?= $testcase_id; ?>" name="bug_type" class="form-select">
+														<option value="Nil" <?= ($row['bug_type'] == 'Nil') ? 'selected' : ''; ?>>Nil</option>
+														<option value="Low" <?= ($row['bug_type'] == 'Low') ? 'selected' : ''; ?>>Low</option>
+                                                        <option value="High" <?= ($row['bug_type'] == 'High') ? 'selected' : ''; ?>>High</option>
+														<option value="Critical" <?= ($row['bug_type'] == 'Critical') ? 'selected' : ''; ?>>Critical</option>
+                                                        
+                                                     </select>    
+                                                </div>
+                                                <div class="col-md-12 mt-3">
+                                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                                </div>
                                             </div>
-                                            <div class="col-md-6">
-                                                <label for="device_name">Device Name:</label>
-                                                <input type="text" name="device_name" class="form-control" value="<?= htmlspecialchars($row['device_name']); ?>" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="android_version">Android Version:</label>
-                                                <input type="text" name="android_version" class="form-control" value="<?= htmlspecialchars($row['android_version']); ?>" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="file_attachment">Attach Screenshot:</label>
-                                                <input type="file" name="file_attachment" class="form-control" id="file-<?= $testcase_id; ?>">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="testing_result">Testing Result:</label>
-                                                <select name="testing_result" class="form-select">
-                                                    <option value="Pass" <?= ($row['testing_result'] == 'Pass') ? 'selected' : ''; ?>>Pass</option>
-                                                    <option value="Fail" <?= ($row['testing_result'] == 'Fail') ? 'selected' : ''; ?>>Fail</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="bug_type">Bug Type:</label>
-                                                <select name="bug_type" class="form-select">
-                                                    <option value="Critical" <?= ($row['bug_type'] == 'Critical') ? 'selected' : ''; ?>>Critical</option>
-                                                    <option value="High" <?= ($row['bug_type'] == 'High') ? 'selected' : ''; ?>>High</option>
-                                                    <option value="Low" <?= ($row['bug_type'] == 'Low') ? 'selected' : ''; ?>>Low</option>
-                                                    <option value="Nil" <?= ($row['bug_type'] == 'Nil') ? 'selected' : ''; ?>>Nil</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-12 mt-3">
-                                                <button type="submit" class="btn btn-primary">Submit</button>
-                                            </div>
-                                        </div>
-                                    </form>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    <?php }
-                    echo '</div>';
-                } else {
-                    echo "<p class='alert alert-warning'>No test cases found for this selection.</p>";
+                        <?php }
+                        echo '</div>';
+                    } else {
+                        echo "<p class='alert alert-warning'>No test cases found for this selection.</p>";
+                    }
                 }
-            }
-            ?>
-        </div>
-    </div>
-	<!-- Session Timeout Popup -->
-<div id="sessionPopup" class="modal fade" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Session Expiring Soon</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Your session will expire in 2 minutes. Please save your work.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
-                </div>
+                ?>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-		// Session timeout in milliseconds (5 minutes)
-        const sessionTimeout = 5 * 60 * 1000; // 5 minutes in milliseconds
+		$(document).ready(function() {
+    // Toggle admin links
+    function toggleAdminLinks() {
+        $('.admin-links').toggleClass('show');
+    }
 
-        // Time before showing the popup (2 minutes before timeout)
-        const popupTime = 2 * 60 * 1000; // 2 minutes in milliseconds
+    // Form toggle function
+    function toggleForm(testcaseId) {
+        const form = $('#form-' + testcaseId);
+        $('.hidden-form').not(form).removeClass('active');
+        form.toggleClass('active');
 
-        // Show the session timeout popup
-        setTimeout(() => {
-            const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
-            sessionPopup.show();
-        }, sessionTimeout - popupTime);
-
-        // Logout the user after session timeout
-        setTimeout(() => {
-            window.location.href = 'logout.php';
-        }, sessionTimeout);
-        // Function to toggle the visibility of admin links
-        function toggleAdminLinks() {
-            const adminLinks = document.querySelector('.admin-links');
-            if (adminLinks.style.display === 'block') {
-                adminLinks.style.display = 'none';
-            } else {
-                adminLinks.style.display = 'block';
-            }
+        // Highlight the active card
+        $('.card').removeClass('active-card');
+        if (form.hasClass('active')) {
+            $('#card-' + testcaseId).addClass('active-card');
         }
+    }
 
-        // Function to toggle the visibility of the update form
-        function toggleForm(testcaseId) {
-            const form = document.getElementById(`form-${testcaseId}`);
-            form.classList.toggle('active');
-        }
+    // Attach click event to toggle buttons
+    $(document).on('click', '.toggle-form-btn', function(e) {
+        e.preventDefault();
+        const testcaseId = $(this).data('id');
+        toggleForm(testcaseId);
+    });
 
-        // Handle form submission via AJAX
-        $(document).ready(function() {
-            $('[id^=updateForm-]').on('submit', function(e) {
-                e.preventDefault();
-                const form = $(this);
-                const testcaseId = form.find('input[name="id"]').val();
+    // AJAX form submission
+    $(document).on('submit', '.ajax-form', function(e) {
+        e.preventDefault();
+        const form = $(this);
+        const testcaseId = form.data('id');
+        const formData = new FormData(this);
 
-                // Convert file to Base64
-                const fileInput = document.getElementById(`file-${testcaseId}`);
-                const file = fileInput.files[0];
-                const reader = new FileReader();
+        // Show loading spinner
+        $('.spinner-overlay').addClass('show');
 
-                if (file) {
-                    reader.readAsDataURL(file);
-                    reader.onload = function() {
-                        const base64File = reader.result.split(',')[1]; // Remove the data URL prefix
-                        submitForm(form, base64File);
-                    };
-                } else {
-                    submitForm(form, null);
+        $.ajax({
+            url: 'update_testcases.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                // Hide loading spinner
+                $('.spinner-overlay').removeClass('show');
+
+                // Show success message
+                const messageDiv = $('#submission-message');
+                messageDiv.removeClass('error').addClass('success');
+                messageDiv.html('Test case updated successfully!');
+                messageDiv.fadeIn().delay(3000).fadeOut();
+
+                // Add check mark if not already present
+                const cardElement = $('#card-' + testcaseId);
+                const updateBtn = cardElement.find('.update-btn');
+                if (updateBtn.find('.tick-icon').length === 0) {
+                    updateBtn.append('<i class="fas fa-check tick-icon" title="Test Case Updated"></i>');
                 }
-            });
-        });
 
-        // Submit form data to the API
-        function submitForm(form, base64File) {
-            const formData = {
-                id: form.find('input[name="id"]').val(),
-                tested_by_name: form.find('input[name="tested_by_name"]').val(),
-                tested_at: form.find('input[name="tested_at"]').val(),
-                actual_result: form.find('textarea[name="actual_result"]').val(),
-                device_name: form.find('input[name="device_name"]').val(),
-                android_version: form.find('input[name="android_version"]').val(),
-                testing_result: form.find('select[name="testing_result"]').val(),
-                bug_type: form.find('select[name="bug_type"]').val(),
-                file_attachment: base64File || ''
-            };
+                // Hide the form after submission
+                toggleForm(testcaseId);
 
-            $.ajax({
-                url: 'update_testcases.php', // Ensure this points to the correct API endpoint
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(formData),
-                success: function(response) {
-                    if (response.status === 'success') {
-                        alert(response.message);
-                        location.reload(); // Reload the page to reflect changes
-                    } else {
-                        alert(response.message || 'Failed to update test case');
+                // If there's a next test case ID, scroll to it
+                if (response.next_id) {
+                    const nextCard = $('#card-' + response.next_id);
+                    if (nextCard.length) {
+                        $('html, body').animate({
+                            scrollTop: nextCard.offset().top - 100
+                        }, 500);
                     }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error:', error);
-                    alert('Failed to update test case');
                 }
-            });
+            },
+            error: function(xhr, status, error) {
+                // Hide loading spinner
+                $('.spinner-overlay').removeClass('show');
+
+                // Show error message
+                const messageDiv = $('#submission-message');
+                messageDiv.removeClass('success').addClass('error');
+                messageDiv.html('Error updating test case: ' + xhr.responseText);
+                messageDiv.fadeIn().delay(3000).fadeOut();
+            }
+        });
+    });
+
+    // Reset filters
+    $(document).on('click', 'button[name="reset"]', function(e) {
+        e.preventDefault();
+        $('#product_name, #version').val('');
+        $('#device_name, #android_version').val('');
+        $('#filter-form').submit();
+    });
+
+    // Toggle admin links
+    $('.admin-section h4').on('click', function() {
+        toggleAdminLinks();
+    });
+
+    // View More functionality
+    $(document).on('click', '.view-more-btn', function() {
+        const cardDetails = $(this).closest('.card-details');
+        cardDetails.find('p').css('-webkit-line-clamp', 'unset');
+        $(this).remove();
+    });
+
+    // Dynamically show/hide bug type options based on testing result
+    $(document).on('change', 'select[name="testing_result"]', function() {
+        const bugTypeSelect = $(this).closest('form').find('select[name="bug_type"]');
+        if ($(this).val() === 'Fail') {
+            bugTypeSelect.html(`
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Low">Low</option>
+            `);
+        } else {
+            bugTypeSelect.html('<option value="Nil">Nil</option>');
         }
+    });
+});
     </script>
 </body>
 </html>
-
-
+                            
