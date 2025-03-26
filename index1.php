@@ -2,21 +2,82 @@
 session_start();
 // Set session timeout to 5 minutes (300 seconds)
 $timeout = 300; // 5 minutes in seconds
+
+// Include database configuration and logging functions
+include 'db_config.php';
+include 'log_api.php';
+
+// Initialize logging
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
     // Last request was more than 5 minutes ago
-    session_unset();     // Unset $_SESSION variable for this page
-    session_destroy();   // Destroy session data
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'] ?? 'unknown',
+        'session_timeout',
+        "Session timed out due to inactivity",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        401,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    session_unset();
+    session_destroy();
     header("Location: login.php");
     exit();
 }
-$_SESSION['last_activity'] = time(); // Update last activity time stamp
+$_SESSION['last_activity'] = time();
+
 if (!isset($_SESSION['user'])) {
+    logUserAction(
+        null,
+        'unknown',
+        'unauthorized_access',
+        "Attempted access without authentication",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
     header("Location: login.php");
     exit();
 }
 
+// Log page access
+logUserAction(
+    $_SESSION['emp_id'] ?? null,
+    $_SESSION['user'],
+    'page_access',
+    "Accessed TCM page",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
+
 $conn = new mysqli("localhost", "root", "", "testing_db");
 if ($conn->connect_error) {
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'],
+        'database_error',
+        "Database connection failed: " . $conn->connect_error,
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        500,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
     die("Database connection failed: " . $conn->connect_error);
 }
 
@@ -26,14 +87,61 @@ $current_page = basename($_SERVER['PHP_SELF']);
 // Fetch distinct products
 $sql_products = "SELECT DISTINCT Product_name FROM testcase";
 $result_products = $conn->query($sql_products);
+if (!$result_products) {
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'],
+        'database_error',
+        "Product query failed: " . $conn->error,
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        $sql_products,
+        500,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+}
 
 // Fetch distinct versions
 $sql_versions = "SELECT DISTINCT Version FROM testcase";
 $result_versions = $conn->query($sql_versions);
+if (!$result_versions) {
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'],
+        'database_error',
+        "Version query failed: " . $conn->error,
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        $sql_versions,
+        500,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+}
 
 // Preserve filter criteria after form submission
 $selected_product = $_POST['product_name'] ?? '';
 $selected_version = $_POST['version'] ?? '';
+
+// Log filter application if form was submitted
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'],
+        'filter_applied',
+        "Applied filters for test cases",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        json_encode(['product' => $selected_product, 'version' => $selected_version]),
+        200,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+}
 ?>
 
 <!DOCTYPE html>
@@ -237,7 +345,6 @@ $selected_version = $_POST['version'] ?? '';
         .upload-excel-btn:hover {
             background-color: #218838;
         }
-		
     </style>
 </head>
 <body>
@@ -278,6 +385,9 @@ $selected_version = $_POST['version'] ?? '';
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
                                 <i class="fas fa-list-alt"></i> TCM
                             </a>
+                            <a href="view_logs.php" class="<?php echo ($current_page == 'view_logs.php') ? 'active' : ''; ?>">
+                                <i class="fas fa-clipboard-list"></i> View Logs
+                            </a>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -288,17 +398,16 @@ $selected_version = $_POST['version'] ?? '';
         <div class="content-container">
             <h3>TCM</h3>
             <!-- + Icon for Adding Test Case -->
-            <button class="btn btn-primary add-testcase-btn" data-bs-toggle="modal" data-bs-target="#testCaseModal">
+            <button class="btn btn-primary add-testcase-btn" data-bs-toggle="modal" data-bs-target="#testCaseModal" onclick="logClientAction('open_add_testcase_modal', 'Opened modal to add new test case')">
                 <i class="fas fa-plus"></i>
             </button>
-			 <button class="btn btn-success upload-excel-btn" onclick="document.getElementById('excel_file').click()">
+            <button class="btn btn-success upload-excel-btn" onclick="document.getElementById('excel_file').click(); logClientAction('click_upload_excel', 'Clicked to upload Excel file')">
                 <i class="fas fa-upload"></i>
             </button>
             <input type="file" id="excel_file" name="excel_file" accept=".xls, .xlsx" style="display: none;">
 
-
             <!-- Filters for Product and Version -->
-            <form method="POST" class="mb-4">
+            <form method="POST" class="mb-4" onsubmit="logClientAction('apply_filters', 'Applying test case filters')">
                 <div class="filter-row">
                     <div class="form-group">
                         <label for="product_name" class="form-label">Select Product:</label>
@@ -337,9 +446,38 @@ $selected_version = $_POST['version'] ?? '';
                 if (!empty($selected_version)) {
                     $sql .= " AND Version = '" . $conn->real_escape_string($selected_version) . "'";
                 }
+                
+                logUserAction(
+                    $_SESSION['emp_id'] ?? null,
+                    $_SESSION['user'],
+                    'database_query',
+                    "Executed test case query",
+                    $_SERVER['REQUEST_URI'],
+                    $_SERVER['REQUEST_METHOD'],
+                    $sql,
+                    200,
+                    null,
+                    $_SERVER['REMOTE_ADDR'],
+                    $_SERVER['HTTP_USER_AGENT']
+                );
+                
                 $result = $conn->query($sql);
 
                 if ($result->num_rows > 0) {
+                    logUserAction(
+                        $_SESSION['emp_id'] ?? null,
+                        $_SESSION['user'],
+                        'test_cases_displayed',
+                        "Displayed " . $result->num_rows . " test cases",
+                        $_SERVER['REQUEST_URI'],
+                        $_SERVER['REQUEST_METHOD'],
+                        null,
+                        200,
+                        null,
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT']
+                    );
+                    
                     while ($row = $result->fetch_assoc()) {
                         echo '<div class="col-md-4">
                                 <div class="card">
@@ -355,10 +493,10 @@ $selected_version = $_POST['version'] ?? '';
                                         <p><i class="fas fa-clipboard-check"></i> <strong>Expected Results:</strong> ' . htmlspecialchars($row['expected_results']) . '</p>
                                     </div>
                                     <div class="update-btn">
-                                        <button class="btn btn-warning btn-sm edit-btn" data-id="' . htmlspecialchars($row['id']) . '" data-bs-toggle="modal" data-bs-target="#testCaseModal">
+                                        <button class="btn btn-warning btn-sm edit-btn" data-id="' . htmlspecialchars($row['id']) . '" data-bs-toggle="modal" data-bs-target="#testCaseModal" onclick="logClientAction(\'edit_testcase_attempt\', \'Attempted to edit test case ID ' . htmlspecialchars($row['id']) . '\')">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <a href="delete_testcase1.php?id=' . htmlspecialchars($row['id']) . '" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure?\');">
+                                        <a href="delete_testcase1.php?id=' . htmlspecialchars($row['id']) . '" class="btn btn-danger btn-sm" onclick="logClientAction(\'delete_testcase_attempt\', \'Attempted to delete test case ID ' . htmlspecialchars($row['id']) . '\'); return confirm(\'Are you sure?\');">
                                             <i class="fas fa-trash-alt"></i>
                                         </a>
                                     </div>
@@ -366,84 +504,97 @@ $selected_version = $_POST['version'] ?? '';
                               </div>';
                     }
                 } else {
+                    logUserAction(
+                        $_SESSION['emp_id'] ?? null,
+                        $_SESSION['user'],
+                        'test_cases_not_found',
+                        "No test cases found with current filters",
+                        $_SERVER['REQUEST_URI'],
+                        $_SERVER['REQUEST_METHOD'],
+                        null,
+                        200,
+                        null,
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT']
+                    );
                     echo '<div class="col-12"><p class="text-center">No test cases found</p></div>';
                 }
                 ?>
             </div>
 
-				<!-- Modal for Adding/Editing Test Case -->
-<div class="modal fade" id="testCaseModal" tabindex="-1" aria-labelledby="testCaseModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="testCaseModalLabel">Add/Edit Test Case</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="testCaseForm">
-                    <input type="hidden" id="id" name="id" value="">
-                    
-                    <!-- Product Selection (Checklist) -->
-                    <div class="mb-3">
-                        <label class="form-label">Select Products</label>
-                        <div class="product-checkbox-grid">
-                            <?php
-                            $uploadDir = "uploads/";
-                            $folders = array_filter(glob($uploadDir . '*'), 'is_dir');
-                            foreach ($folders as $folder) {
-                                $folderName = basename($folder);
-                                echo "<div class='form-check'>
-                                        <input class='form-check-input' type='checkbox' name='product_name[]' value='" . htmlspecialchars($folderName) . "' id='product_" . htmlspecialchars($folderName) . "'>
-                                        <label class='form-check-label' for='product_" . htmlspecialchars($folderName) . "'>" . htmlspecialchars($folderName) . "</label>
-                                      </div>";
-                            }
-                            ?>
+            <!-- Modal for Adding/Editing Test Case -->
+            <div class="modal fade" id="testCaseModal" tabindex="-1" aria-labelledby="testCaseModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="testCaseModalLabel">Add/Edit Test Case</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="testCaseForm">
+                                <input type="hidden" id="id" name="id" value="">
+                                
+                                <!-- Product Selection (Checklist) -->
+                                <div class="mb-3">
+                                    <label class="form-label">Select Products</label>
+                                    <div class="product-checkbox-grid">
+                                        <?php
+                                        $uploadDir = "uploads/";
+                                        $folders = array_filter(glob($uploadDir . '*'), 'is_dir');
+                                        foreach ($folders as $folder) {
+                                            $folderName = basename($folder);
+                                            echo "<div class='form-check'>
+                                                    <input class='form-check-input' type='checkbox' name='product_name[]' value='" . htmlspecialchars($folderName) . "' id='product_" . htmlspecialchars($folderName) . "'>
+                                                    <label class='form-check-label' for='product_" . htmlspecialchars($folderName) . "'>" . htmlspecialchars($folderName) . "</label>
+                                                  </div>";
+                                        }
+                                        ?>
+                                    </div>
+                                </div>
+
+                                <!-- Version Selection -->
+                                <div class="mb-3">
+                                    <label for="version" class="form-label">Version</label>
+                                    <select class="form-control" id="version" name="version" required>
+                                        <option value="">Select Version</option>
+                                    </select>
+                                </div>
+
+                                <!-- Module Name -->
+                                <div class="mb-3">
+                                    <label for="module_name" class="form-label">Module Name</label>
+                                    <input type="text" class="form-control" id="module_name" name="module_name" value="">
+                                </div>
+
+                                <!-- Description -->
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description"></textarea>
+                                </div>
+
+                                <!-- Preconditions -->
+                                <div class="mb-3">
+                                    <label for="preconditions" class="form-label">Preconditions</label>
+                                    <textarea class="form-control" id="preconditions" name="preconditions"></textarea>
+                                </div>
+
+                                <!-- Test Steps -->
+                                <div class="mb-3">
+                                    <label for="test_steps" class="form-label">Test Steps</label>
+                                    <textarea class="form-control" id="test_steps" name="test_steps"></textarea>
+                                </div>
+
+                                <!-- Expected Results -->
+                                <div class="mb-3">
+                                    <label for="expected_results" class="form-label">Expected Results</label>
+                                    <textarea class="form-control" id="expected_results" name="expected_results"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Test Case</button>
+                            </form>
                         </div>
                     </div>
-
-                    <!-- Version Selection -->
-                    <div class="mb-3">
-                        <label for="version" class="form-label">Version</label>
-                        <select class="form-control" id="version" name="version" required>
-                            <option value="">Select Version</option>
-                        </select>
-                    </div>
-
-                    <!-- Module Name -->
-                    <div class="mb-3">
-                        <label for="module_name" class="form-label">Module Name</label>
-                        <input type="text" class="form-control" id="module_name" name="module_name" value="">
-                    </div>
-
-                    <!-- Description -->
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description"></textarea>
-                    </div>
-
-                    <!-- Preconditions -->
-                    <div class="mb-3">
-                        <label for="preconditions" class="form-label">Preconditions</label>
-                        <textarea class="form-control" id="preconditions" name="preconditions"></textarea>
-                    </div>
-
-                    <!-- Test Steps -->
-                    <div class="mb-3">
-                        <label for="test_steps" class="form-label">Test Steps</label>
-                        <textarea class="form-control" id="test_steps" name="test_steps"></textarea>
-                    </div>
-
-                    <!-- Expected Results -->
-                    <div class="mb-3">
-                        <label for="expected_results" class="form-label">Expected Results</label>
-                        <textarea class="form-control" id="expected_results" name="expected_results"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Save Test Case</button>
-                </form>
+                </div>
             </div>
-        </div>
-    </div>
-</div>
         </div>
     </div>
 
@@ -455,14 +606,19 @@ $selected_version = $_POST['version'] ?? '';
                 console.log("Editing test case with ID:", testCaseId);
                 
                 if (!testCaseId) {
+                    logClientAction('edit_testcase_error', 'Invalid or missing test case ID');
                     alert("Invalid or missing ID");
                     return;
                 }
+
+                // Log the edit action attempt
+                logClientAction('edit_testcase_fetch', 'Fetching test case details for ID ' + testCaseId);
 
                 // Fetch test case details using AJAX
                 fetch(`fetch_testcase1.php?id=${encodeURIComponent(testCaseId)}`)
                     .then(response => {
                         if (!response.ok) {
+                            logClientAction('edit_testcase_fetch_error', 'Failed to fetch test case details for ID ' + testCaseId);
                             throw new Error('Network response was not ok');
                         }
                         return response.json();
@@ -470,6 +626,8 @@ $selected_version = $_POST['version'] ?? '';
                     .then(data => {
                         console.log("Received data:", data);
                         if (data.status === "success") {
+                            logClientAction('edit_testcase_fetch_success', 'Successfully fetched test case details for ID ' + testCaseId);
+                            
                             // Populate the modal form with the fetched data
                             document.getElementById('id').value = data.data.id;
                             document.getElementById('module_name').value = data.data.Module_name;
@@ -498,10 +656,12 @@ $selected_version = $_POST['version'] ?? '';
                             // Fetch versions for the selected products
                             fetchVersionsForSelectedProducts(data.data.Version);
                         } else {
+                            logClientAction('edit_testcase_fetch_failed', 'Failed to fetch test case: ' + (data.message || "Unknown error"));
                             alert(data.message || "Error fetching test case");
                         }
                     })
                     .catch(error => {
+                        logClientAction('edit_testcase_fetch_exception', 'Exception while fetching test case: ' + error.message);
                         console.error("Error fetching test case:", error);
                         alert("An error occurred while fetching the test case.");
                     });
@@ -535,7 +695,6 @@ $selected_version = $_POST['version'] ?? '';
                     })
                     .catch(error => {
                         console.error("Error fetching versions:", error);
-                        alert("An error occurred while fetching versions.");
                     });
             } else {
                 const versionSelect = document.getElementById('version');
@@ -561,6 +720,10 @@ $selected_version = $_POST['version'] ?? '';
             };
 
             console.log("Submitting form data:", formData);
+            
+            // Log the form submission attempt
+            const action = formData.id ? 'update_testcase_attempt' : 'create_testcase_attempt';
+            logClientAction(action, 'Submitting test case form for ' + (formData.id ? 'ID ' + formData.id : 'new test case'));
 
             // Send data to the API
             fetch('submit_testcase.php', {
@@ -572,6 +735,7 @@ $selected_version = $_POST['version'] ?? '';
             })
             .then(response => {
                 if (!response.ok) {
+                    logClientAction(action + '_error', 'Network error while submitting test case');
                     throw new Error('Network response was not ok');
                 }
                 return response.json();
@@ -579,13 +743,16 @@ $selected_version = $_POST['version'] ?? '';
             .then(data => {
                 console.log("Response data:", data);
                 if (data.status === "success") {
+                    logClientAction(action + '_success', 'Successfully ' + (formData.id ? 'updated' : 'created') + ' test case');
                     alert(data.message);
                     location.reload(); // Refresh to show new data
                 } else {
+                    logClientAction(action + '_failed', 'Failed to submit test case: ' + (data.message || "Unknown error"));
                     alert(data.message || "Error saving test case");
                 }
             })
             .catch(error => {
+                logClientAction(action + '_exception', 'Exception while submitting test case: ' + error.message);
                 console.error("Error:", error);
                 alert("An error occurred while saving the test case.");
             });
@@ -603,18 +770,22 @@ $selected_version = $_POST['version'] ?? '';
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'none' ? 'block' : 'none';
         }
-		// Handle Excel file upload
+        
+        // Handle Excel file upload
         document.getElementById("excel_file").addEventListener("change", function() {
             let fileInput = this;
             if (fileInput.files.length === 0) {
-                alert("No file selected.");
+                logClientAction('excel_upload_canceled', 'No file selected for upload');
                 return;
             }
+
+            // Log file upload attempt
+            logClientAction('excel_upload_attempt', 'Attempting to upload Excel file: ' + fileInput.files[0].name);
 
             let formData = new FormData();
             formData.append("excel_file", fileInput.files[0]);
 
-            console.log("Uploading file:", fileInput.files[0].name); // Debugging
+            console.log("Uploading file:", fileInput.files[0].name);
 
             fetch("upload_excel.php", {
                 method: "POST",
@@ -623,33 +794,80 @@ $selected_version = $_POST['version'] ?? '';
             .then(response => response.json())
             .then(data => {
                 if (data.status === "success") {
+                    logClientAction('excel_upload_success', 'Successfully uploaded Excel file: ' + fileInput.files[0].name);
                     alert(data.message);
                     location.reload(); // Refresh to show new data
                 } else {
+                    logClientAction('excel_upload_failed', 'Failed to upload Excel file: ' + (data.message || "Unknown error"));
                     alert(data.message);
                 }
             })
             .catch(error => {
+                logClientAction('excel_upload_error', 'Error uploading Excel file: ' + error.message);
                 console.error("Error:", error);
                 alert("An error occurred while uploading the file.");
             });
-			// Clear form when modal is opened for adding new test case
-document.getElementById('testCaseModal').addEventListener('show.bs.modal', function (event) {
-    // If the modal was triggered by an edit button, don't clear the form
-    if (!event.relatedTarget || !event.relatedTarget.classList.contains('edit-btn')) {
-        document.getElementById('testCaseForm').reset();
-        document.getElementById('id').value = '';
-        document.getElementById('version').innerHTML = '<option value="">Select Version</option>';
+        });
         
-        // Uncheck all product checkboxes
-        document.querySelectorAll('.product-checkbox-grid .form-check-input').forEach(checkbox => {
-            checkbox.checked = false;
+        // Clear form when modal is opened for adding new test case
+        document.getElementById('testCaseModal').addEventListener('show.bs.modal', function (event) {
+            // If the modal was triggered by an edit button, don't clear the form
+            if (!event.relatedTarget || !event.relatedTarget.classList.contains('edit-btn')) {
+                document.getElementById('testCaseForm').reset();
+                document.getElementById('id').value = '';
+                document.getElementById('version').innerHTML = '<option value="">Select Version</option>';
+                
+                // Uncheck all product checkboxes
+                document.querySelectorAll('.product-checkbox-grid .form-check-input').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                // Log modal open for new test case
+                logClientAction('new_testcase_modal_opened', 'Opened modal to add new test case');
+            }
         });
-    }
-});
-        });
+
+        // Enhanced client-side logging function
+        function logClientAction(actionType, description) {
+            // Send to server-side logging
+            fetch('log_api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'log_client_action',
+                    emp_id: <?php echo json_encode($_SESSION['emp_id'] ?? null); ?>,
+                    username: <?php echo json_encode($_SESSION['user'] ?? 'unknown'); ?>,
+                    action_type: actionType,
+                    description: description,
+                    page_url: window.location.href,
+                    ip_address: '', // Will be captured server-side
+                    user_agent: navigator.userAgent
+                })
+            }).catch(e => console.error('Error logging client action:', e));
+            
+            // Also log to console for debugging
+            console.log(`[CLIENT ACTION] ${actionType}: ${description}`);
+        }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php 
+// Log page execution completion
+logUserAction(
+    $_SESSION['emp_id'] ?? null,
+    $_SESSION['user'],
+    'page_execution_complete',
+    "Completed execution of TCM page",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
+$conn->close(); 
+?>
