@@ -1,70 +1,68 @@
 <?php
-session_start();
-header("Content-Type: application/json"); // Set response type to JSON
+header('Content-Type: application/json');
 
-if (!isset($_SESSION['user'])) {
-    echo json_encode(["status" => "error", "message" => "Unauthorized access. Please log in."]);
-    exit();
+// Get the raw POST data
+$json = file_get_contents('php://input');
+$data = json_decode($json, true);
+
+// Validate input
+if (!isset($data['module_name']) || !isset($data['description'])) {
+    echo json_encode(['status' => 'error', 'message' => 'Required fields are missing']);
+    exit;
 }
 
+// Database connection
 $conn = new mysqli("localhost", "root", "", "testing_db");
-
 if ($conn->connect_error) {
-    echo json_encode(["status" => "error", "message" => "Database connection failed: " . $conn->connect_error]);
-    exit();
+    die(json_encode(['status' => 'error', 'message' => 'Database connection failed']));
 }
 
-// Read and decode JSON input
-$inputJSON = file_get_contents("php://input");
-$data = json_decode($inputJSON, true);
+// Escape all inputs
+$id = isset($data['id']) ? $conn->real_escape_string($data['id']) : null;
+$products = array_map([$conn, 'real_escape_string'], $data['product_name']);
+$version = $conn->real_escape_string($data['version']);
+$module = $conn->real_escape_string($data['module_name']);
+$desc = $conn->real_escape_string($data['description']);
+$preconditions = $conn->real_escape_string($data['preconditions'] ?? '');
+$steps = $conn->real_escape_string($data['test_steps']);
+$results = $conn->real_escape_string($data['expected_results']);
 
-if (!$data) {
-    echo json_encode(["status" => "error", "message" => "Invalid JSON format"]);
-    exit();
-}
+// For multiple products, you might want to handle them differently
+$product = $products[0]; // Or implement multi-product support
 
-// Extract and validate input data
-$id = $data['testcase_id'] ?? '';
-$product_names = $data['product_name'] ?? [];
-$version = $data['version'] ?? '';
-$module_name = $data['module_name'] ?? '';
-$description = $data['description'] ?? '';
-$preconditions = $data['preconditions'] ?? '';
-$test_steps = $data['test_steps'] ?? '';
-$expected_results = $data['expected_results'] ?? '';
-
-if (empty($product_names) || empty($version) || empty($module_name) || empty($description)) {
-    echo json_encode(["status" => "error", "message" => "All required fields must be filled."]);
-    exit();
-}
-
-if (!empty($id)) {
-    // **Update Existing Test Case - Delete previous entry**
-    $stmt = $conn->prepare("DELETE FROM testcase WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    if (!$stmt->execute()) {
-        echo json_encode(["status" => "error", "message" => "Failed to update test case."]);
-        $stmt->close();
-        $conn->close();
-        exit();
+if ($id) {
+    // Update existing record - don't modify testing_result unless explicitly provided
+    $sql = "UPDATE testcase SET 
+            Product_name = '$product',
+            Version = '$version',
+            Module_name = '$module',
+            description = '$desc',
+            preconditions = '$preconditions',
+            test_steps = '$steps',
+            expected_results = '$results'";
+            
+    // Only update testing_result if it was provided in the request
+    if (isset($data['testing_result'])) {
+        $testing_result = $conn->real_escape_string($data['testing_result']);
+        $sql .= ", testing_result = '$testing_result'";
     }
-    $stmt->close();
+    
+    $sql .= " WHERE id = '$id'";
+} else {
+    // Insert new record - explicitly set testing_result to NULL
+    $sql = "INSERT INTO testcase 
+            (Product_name, Version, Module_name, description, 
+             preconditions, test_steps, expected_results, testing_result)
+            VALUES 
+            ('$product', '$version', '$module', '$desc', 
+             '$preconditions', '$steps', '$results', NULL)";
 }
 
-// Insert a new row for each selected product
-foreach ($product_names as $product_name) {
-    $stmt = $conn->prepare("INSERT INTO testcase (Product_name, Version, Module_name, description, preconditions, test_steps, expected_results) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssss", $product_name, $version, $module_name, $description, $preconditions, $test_steps, $expected_results);
-
-    if (!$stmt->execute()) {
-        echo json_encode(["status" => "error", "message" => "Error inserting test case: " . $stmt->error]);
-        $stmt->close();
-        $conn->close();
-        exit();
-    }
-    $stmt->close();
+if ($conn->query($sql)) {
+    echo json_encode(['status' => 'success', 'message' => 'Test case saved successfully']);
+} else {
+    echo json_encode(['status' => 'error', 'message' => 'Error saving test case: ' . $conn->error]);
 }
 
 $conn->close();
-echo json_encode(["status" => "success", "message" => "Test case saved successfully"]);
 ?>

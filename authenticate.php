@@ -9,7 +9,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (empty($email_or_mobile) || empty($password)) {
         $_SESSION['error'] = "Email/Mobile and Password are required.";
-        header("Location: login.php");
+        header("Location: index.php");
         exit();
     }
 
@@ -19,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!$is_email && !$is_mobile) {
         $_SESSION['error'] = "Invalid email or mobile number format.";
-        header("Location: login.php");
+        header("Location: index.php");
         exit();
     }
 
@@ -45,14 +45,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $update_stmt->execute();
             } else {
                 $_SESSION['error'] = "Invalid email/mobile or password.";
-                header("Location: login.php");
+                header("Location: index.php");
                 exit();
             }
         } 
         // ✅ Verify Bcrypt Password
         elseif (!password_verify($password, $stored_password)) {
             $_SESSION['error'] = "Invalid email/mobile or password.";
-            header("Location: login.php");
+            header("Location: index.php");
             exit();
         }
 
@@ -81,14 +81,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     } else {
         $_SESSION['error'] = "Invalid email/mobile or password.";
-        header("Location: login.php");
+        header("Location: index.php");
         exit();
     }
 
     $stmt->close();
     $conn->close();
 } else {
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 ?>

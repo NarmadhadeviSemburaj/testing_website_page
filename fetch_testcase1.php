@@ -1,27 +1,35 @@
 <?php
+header('Content-Type: application/json');
+
+// Database connection
 $conn = new mysqli("localhost", "root", "", "testing_db");
-
-// Check connection
 if ($conn->connect_error) {
-    die(json_encode(["status" => "error", "message" => "Database connection failed", "data" => null]));
+    die(json_encode(['status' => 'error', 'message' => 'Database connection failed']));
 }
 
-// Get ID from request
-$id = $_GET['id'] ?? null;
+// Get the ID from the request
+$id = isset($_GET['id']) ? $conn->real_escape_string($_GET['id']) : null;
 
-// Validate ID
-if (!$id || !is_numeric($id)) {
-    die(json_encode(["status" => "error", "message" => "Invalid or missing ID", "data" => null]));
+if (!$id) {
+    echo json_encode(['status' => 'error', 'message' => 'ID is required']);
+    exit;
 }
 
-// Fetch data
-$result = $conn->query("SELECT * FROM testcase WHERE id = $id");
+// Fetch test case - use quotes around the ID since it's VARCHAR
+$sql = "SELECT * FROM testcase WHERE id = '$id'";
+$result = $conn->query($sql);
 
-if ($result->num_rows > 0) {
-    $data = $result->fetch_assoc();
-    echo json_encode(["status" => "success", "message" => "Record found", "data" => $data]);
+if ($result && $result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    echo json_encode([
+        'status' => 'success',
+        'data' => $row
+    ]);
 } else {
-    echo json_encode(["status" => "error", "message" => "No record found", "data" => null]);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Test case not found'
+    ]);
 }
 
 $conn->close();

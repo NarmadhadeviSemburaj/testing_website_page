@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (!isset($_SESSION['user'])) {
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 
@@ -37,13 +37,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['selected_version'] = $_POST['version'];
     }
     
-    // Store device name and Android version in session
-    if (isset($_POST['device_name'])) {
+    // Store device name and Android version in session if provided
+    if (!empty($_POST['device_name'])) {
         $_SESSION['device_name'] = $_POST['device_name'];
     }
-    if (isset($_POST['android_version'])) {
+    if (!empty($_POST['android_version'])) {
         $_SESSION['android_version'] = $_POST['android_version'];
     }
+    
     if (isset($_POST['reset'])) {
         unset($_SESSION['device_name']);
         unset($_SESSION['android_version']);
@@ -56,6 +57,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 $device_name = $_SESSION['device_name'] ?? '';
 $android_version = $_SESSION['android_version'] ?? '';
+
+// Fetch folders for APK download
+$folders = array_filter(glob('uploads/*'), 'is_dir');
 ?>
 
 <!DOCTYPE html>
@@ -66,40 +70,35 @@ $android_version = $_SESSION['android_version'] ?? '';
     <title>Update Test Case</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Your existing CSS styles */html, body {
+        html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            background-color: #f0f0f0; /* Light Grey Background */
-            overflow: hidden; /* Prevents unwanted scrolling */
+            background-color: #f0f0f0;
+            overflow: hidden;
         }
-
-        /* Wrapper to hold both sidebar and content */
         .wrapper {
             display: flex;
-            height: 100vh; /* Full viewport height */
+            height: 100vh;
             padding: 20px;
         }
-
-        /* Sidebar: Fixed, No Scrolling */
         .sidebar-container {
             width: 200px;
-            height: 100vh; /* Fixed height */
-            background-color: #fff; /* Sidebar color */
+            height: 100vh;
+            background-color: #fff;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
             margin-right: 20px;
-            overflow: hidden; /* Prevents sidebar scrolling */
-            position: fixed; /* Keeps sidebar fixed */
-            left: 20px; /* Keeps margin spacing */
-            top: 20px; /* Keeps margin spacing */
+            overflow: hidden;
+            position: fixed;
+            left: 20px;
+            top: 20px;
             bottom: 20px;
         }
-
-        /* Sidebar Links */
         .sidebar a {
             display: block;
             padding: 10px;
@@ -109,166 +108,127 @@ $android_version = $_SESSION['android_version'] ?? '';
             border-radius: 10px;
             transition: background-color 0.3s;
         }
-
         .sidebar a:hover, .sidebar a.active {
             background-color: #007bff;
             color: #fff;
         }
         .sidebar a i {
-            margin-right: 10px; /* Adjust spacing */
+            margin-right: 10px;
         }
-
-        /* Content Container: Scrollable */
         .content-container {
             flex: 1;
             background-color: #fff;
             border-radius: 10px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            height: 100vh; /* Fixed height */
-            margin-left: 220px; /* Offset for the fixed sidebar */
-            overflow-y: auto; /* Enables scrolling */
+            height: 100vh;
+            margin-left: 220px;
+            overflow-y: auto;
         }
         .admin-section h4 {
-            font-size: 16px; /* Match this to the sidebar links' font size */
-            cursor: pointer; /* Indicates it's clickable */
-            
+            font-size: 16px;
+            cursor: pointer;
         }
         .admin-section {
             margin-top: 20px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
         }
-
-        /* User Info */
         .user-info {
             text-align: center;
             margin-bottom: 20px;
         }
-
         .user-info i {
             font-size: 20px;
             margin-right: 5px;
         }
-
         .user-info h4 {
             font-size: 16px;
             margin: 5px 0 0;
             color: #333;
         }
         .admin-links {
-            display: none; /* Initially hidden */
+            display: none;
         }
-        .download-apk-btn {
-            position: absolute;
-            top: 60px; /* Adjusted position */
-            right: 40px;
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
         }
-        .sidebar a i {
-            margin-right: 10px; /* Adjust spacing */
+        .filter-item {
+            flex-grow: 1;
+            min-width: 200px;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
         }
         .card {
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            background-color: #fff;
-            height: 100%; /* Make all cards the same height */
-            display: flex;
-            flex-direction: column;
+            margin-bottom: 15px;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
         }
         .card:hover {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
-        .card-title {
-            font-size: 16px; /* Slightly smaller card title */
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #007bff;
-        }
-        .card-details {
-            margin-bottom: 10px;
-            flex-grow: 1; /* Allow this section to grow and fill space */
-        }
-        .card-details p {
-            margin: 5px 0;
-            font-size: 14px; /* Card details font size */
-            color: #555;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .card-details i {
-            margin-right: 8px;
-            color: #007bff;
-            width: 14px; /* Fixed width for icons */
-            text-align: center;
-        }
-        .update-btn {
-            text-align: right;
-            margin-top: auto; /* Push to bottom of card */
-        }
-        .tick-icon {
-            color: red;
-            margin-left: 10px;
-        }
-        .hidden-form {
-            display: none;
-            margin-top: 10px;
-        }
-        .hidden-form.active {
-            display: block;
-        }
-        .admin-links {
-            display: none; /* Initially hidden */
-            transition: all 0.3s ease; /* Smooth transition */
-        }
-
-        .admin-links.show {
-            display: block; /* Show the dropdown */
-        }
-		.view-more-btn {
-			color: #007bff;
-			cursor: pointer;
-			font-size: 14px;
-			margin-top: 5px;
-			text-align: right;
-		}
-		.view-more-btn:hover {
-			text-decoration: underline;
-		}
-        .filter-row {
+        .card-header {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
             display: flex;
-            gap: 10px;
-            align-items: flex-end;
-            margin-bottom: 20px;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
         }
-        .filter-row .form-group {
-            flex: 1;
-            margin-bottom: 0;
+        .card-body {
+            padding: 15px;
         }
-        .filter-row .form-group label {
-            font-size: 14px; /* Smaller label font size */
+        .info-icon {
+            color: #007bff;
+            cursor: pointer;
         }
-        .filter-row .form-select {
-            font-size: 14px; /* Smaller dropdown font size */
-            padding: 6px 6px; /* Smaller padding for dropdowns */
+        .test-result {
+            margin: 15px 0;
         }
-        .filter-row .btn {
-            flex: 0 0 auto;
-            font-size: 14px; /* Smaller button font size */
-            padding: 6px 12px; /* Smaller padding for button */
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
         }
-        /* New styles for highlighting active card */
-        .card.active-card {
-            border: 2px solid #007bff;
-            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
         }
-        /* Loading spinner */
+        .pass-label {
+            color: #198754;
+        }
+        .fail-label {
+            color: #dc3545;
+        }
+        .submission-message {
+            display: none;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .submission-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .submission-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
         .spinner-overlay {
             position: fixed;
             top: 0;
@@ -288,21 +248,59 @@ $android_version = $_SESSION['android_version'] ?? '';
             visibility: visible;
             opacity: 1;
         }
-        .submission-message {
-            display: none;
-            padding: 10px;
-            margin-bottom: 10px;
+        .tooltip-inner {
+            max-width: 300px;
+            text-align: left;
+        }
+        .apk-download-modal .modal-dialog {
+            max-width: 400px;
+        }
+        .apk-download-modal .card {
+            border: none;
+            box-shadow: none;
+        }
+        .device-info-banner {
+            margin-bottom: 20px;
+            padding: 10px 15px;
             border-radius: 5px;
         }
-        .submission-message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        .result-not-selected {
+            color: #6c757d;
+            font-style: italic;
         }
-        .submission-message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+        .bug-details-fail {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .card-pass {
+            animation: pulsePass 2s;
+            border-color: #198754;
+        }
+        .card-fail {
+            animation: pulseFail 2s;
+            border-color: #dc3545;
+        }
+        @keyframes pulsePass {
+            0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+        }
+        @keyframes pulseFail {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .tested-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1;
+        }
+        .card-disabled {
+            opacity: 0.8;
+            background-color: #f8f9fa;
         }
     </style>
 </head>
@@ -310,6 +308,40 @@ $android_version = $_SESSION['android_version'] ?? '';
     <div class="spinner-overlay">
         <div class="spinner-border text-light" role="status">
             <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    
+    <!-- APK Download Modal -->
+    <div class="modal fade apk-download-modal" id="apkDownloadModal" tabindex="-1" aria-labelledby="apkDownloadModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="apkDownloadModalLabel">Download APK</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="card">
+                        <form id="apkDownloadForm">
+                            <div class="mb-3">
+                                <select id="folderSelect" class="form-select">
+                                    <option value="">Select Product</option>
+                                    <?php foreach ($folders as $folder): ?>
+                                        <option value="<?= basename($folder) ?>"><?= basename($folder) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <select id="versionSelect" class="form-select" disabled>
+                                    <option value="">Select Version</option>
+                                </select>
+                            </div>
+                            <button type="button" id="downloadBtn" class="btn btn-primary w-100" disabled>
+                                <i class="fas fa-download me-2"></i> Download
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -337,7 +369,7 @@ $android_version = $_SESSION['android_version'] ?? '';
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
 
-                <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
+               <?php if ($_SESSION['is_admin']): ?>
                     <div class="admin-section">
                         <h4 onclick="toggleAdminLinks()"><i class="fas fa-cogs"></i> Admin <i class="fas fa-chevron-down"></i></h4>
                         <div class="admin-links">
@@ -355,26 +387,24 @@ $android_version = $_SESSION['android_version'] ?? '';
                 <?php endif; ?>
             </div>
         </div>
+           
+       
+
         <!-- Main Content -->
         <div class="content-container">
-            <!-- Download APK Button -->
-            <a href="fetch1.php" class="btn btn-primary download-apk-btn" title="Download APK">
-                <i class="fas fa-download"></i>
-            </a>
-
+            <h3>Testing</h3>
+            
             <!-- Notification area for submission feedback -->
             <div id="submission-message" class="submission-message"></div>
-
-            <!-- Rest of the content -->
-            <h3>Testing</h3>
-            <form id="filter-form" method="POST" class="mb-4">
-                <div class="filter-row">
-                    <div class="form-group">
-                        <label for="product_name" class="form-label">Select Product:</label>
-                        <select name="product_name" id="product_name" required class="form-select">
+            
+            <!-- Combined Filter Section with Device Info -->
+            <div class="filter-container">
+                <form id="filter-form" method="POST" class="w-100 d-flex flex-wrap gap-2 align-items-center">
+                    <div class="filter-item">
+                        <select name="product_name" id="product_name" required class="form-select form-select-sm">
                             <option value="">-- Select Product --</option>
                             <?php 
-                            $result_products->data_seek(0); // Reset the result pointer
+                            $result_products->data_seek(0);
                             while ($row = $result_products->fetch_assoc()) { ?>
                                 <option value="<?= htmlspecialchars($row['Product_name']); ?>" <?= ($selected_product == $row['Product_name']) ? 'selected' : ''; ?>>
                                     <?= htmlspecialchars($row['Product_name']); ?>
@@ -382,12 +412,12 @@ $android_version = $_SESSION['android_version'] ?? '';
                             <?php } ?>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="version" class="form-label">Select Version:</label>
-                        <select name="version" id="version" required class="form-select">
+                    
+                    <div class="filter-item">
+                        <select name="version" id="version" required class="form-select form-select-sm">
                             <option value="">-- Select Version --</option>
                             <?php 
-                            $result_versions->data_seek(0); // Reset the result pointer
+                            $result_versions->data_seek(0);
                             while ($row = $result_versions->fetch_assoc()) { ?>
                                 <option value="<?= htmlspecialchars($row['Version']); ?>" <?= ($selected_version == $row['Version']) ? 'selected' : ''; ?>>
                                     <?= htmlspecialchars($row['Version']); ?>
@@ -395,100 +425,151 @@ $android_version = $_SESSION['android_version'] ?? '';
                             <?php } ?>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary">Filter</button>
-                </div>
-
-                <!-- Device Name and Android Version -->
-                <div class="filter-row mt-3">
-                    <div class="form-group">
-                        <label for="device_name" class="form-label">Device Name:</label>
-                        <input type="text" name="device_name" id="device_name" class="form-control" value="<?= htmlspecialchars($device_name); ?>" required>
+                    
+                    <!-- Device Information (Entered once per session) -->
+                    <div class="filter-item">
+                        <input type="text" name="device_name" id="global_device_name" 
+                               class="form-control form-control-sm" 
+                               placeholder="Device Name" 
+                               value="<?= htmlspecialchars($device_name); ?>"
+                               required>
                     </div>
-                    <div class="form-group">
-                        <label for="android_version" class="form-label">Android Version:</label>
-                        <input type="text" name="android_version" id="android_version" class="form-control" value="<?= htmlspecialchars($android_version); ?>" required>
+                    
+                    <div class="filter-item">
+                        <input type="text" name="android_version" id="global_android_version" 
+                               class="form-control form-control-sm" 
+                               placeholder="Android Version" 
+                               value="<?= htmlspecialchars($android_version); ?>"
+                               required>
                     </div>
-                    <button type="submit" name="reset" class="btn btn-danger">Reset</button>
-                </div>
-            </form>
+                    
+                    <div class="filter-buttons">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                        
+                        <button type="submit" name="reset" class="btn btn-danger btn-sm">
+                            <i class="fas fa-sync"></i> Reset
+                        </button>
+                        
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#apkDownloadModal">
+                            <i class="fas fa-download"></i> Download APK
+                        </button>
+                    </div>
+                </form>
+            </div>
 
+            <!-- Device Info Banner -->
+            <?php if (!empty($device_name) || !empty($android_version)): ?>
+                <div class="alert alert-info device-info-banner">
+                    <strong>Current Testing Device:</strong> 
+                    <?= htmlspecialchars($device_name) ?> 
+                    (Android <?= htmlspecialchars($android_version) ?>)
+                </div>
+            <?php endif; ?>
+
+            <!-- Test Cases Section -->
             <div id="test-cases-container">
                 <?php
                 if (!empty($selected_product) && !empty($selected_version)) {
-                    $sql = "SELECT * FROM testcase WHERE Product_name = ? AND Version = ?";
+                    $sql = "SELECT * FROM testcase WHERE Product_name = ? AND Version = ? ORDER BY id ASC";
                     $stmt = $conn->prepare($sql);
                     $stmt->bind_param("ss", $selected_product, $selected_version);
                     $stmt->execute();
                     $result = $stmt->get_result();
 
                     if ($result->num_rows > 0) {
-                        echo "<h2 class='mt-4'>Test Cases for $selected_product - $selected_version</h2>";
-                        echo '<div class="row row-cols-1 row-cols-md-3 g-4" id="test-cards">';
+                        echo "<h4 class='mt-3 mb-3'>Test Cases for $selected_product - $selected_version</h4>";
+                        echo '<div class="row" id="test-cards">';
+                        
                         while ($row = $result->fetch_assoc()) { 
                             $testcase_id = $row['id'];
                             $is_updated = !empty($row['tested_by_name']);
+                            $testing_result = $row['testing_result'] ?? '';
                         ?>
-                            <div class="col test-case-col" data-id="<?= $testcase_id ?>">
-                                <div class="card" id="card-<?= $testcase_id ?>">
-                                    <div class="card-title">
-                                        <i class="fas fa-folder"></i> <?= htmlspecialchars($row['Module_name']); ?>
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 <?= $is_updated ? 'card-disabled' : '' ?>" id="card-<?= $testcase_id ?>">
+                                    <?php if ($is_updated): ?>
+                                        <span class="badge bg-success tested-badge">
+                                            <i class="fas fa-check"></i> Tested
+                                        </span>
+                                    <?php endif; ?>
+                                    
+                                    <div class="card-header">
+                                        <span>
+                                            <i class="fas fa-folder me-1"></i> 
+                                            <?= htmlspecialchars($row['Module_name']); ?> 
+                                            <span class="badge bg-secondary ms-1">ID: <?= $testcase_id ?></span>
+                                        </span>
+                                        <i class="fas fa-info-circle info-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-html="true" 
+                                           title="<strong>Description:</strong><br><?= htmlspecialchars($row['description']); ?>"></i>
                                     </div>
-                                    <div class="card-details">
-										<p><i class="fas fa-align-left"></i> <strong>Description:</strong> <?= htmlspecialchars($row['description']); ?></p>
-										<p><i class="fas fa-list-ol"></i> <strong>Test Steps:</strong> <?= htmlspecialchars($row['test_steps']); ?></p>
-										<p><i class="fas fa-check-circle"></i> <strong>Preconditions:</strong> <?= htmlspecialchars($row['preconditions']); ?></p>
-										<p><i class="fas fa-clipboard-check"></i> <strong>Expected Result:</strong> <?= htmlspecialchars($row['expected_results']); ?></p>
-										<div class="view-more-btn">View More</div>
-									</div>
-                                    <div class="update-btn">
-                                        <button class="btn btn-success btn-sm toggle-form-btn" data-id="<?= $testcase_id; ?>" title="Update">
-                                            <i class="fas fa-edit"></i> 
-                                        </button>
-                                        <?php if ($is_updated): ?>
-                                            <i class="fas fa-check tick-icon" title="Test Case Updated"></i>
-                                        <?php endif; ?>
-                                    </div>
-                                    <!-- Update Form Inside the Card -->
-                                    <div id="form-<?= $testcase_id; ?>" class="hidden-form">
-                                        <form class="ajax-form" data-id="<?= $testcase_id; ?>" action="update_testcases.php" method="POST" enctype="multipart/form-data">
+                                    
+                                    <div class="card-body">
+                                        <div class="test-info mb-3">
+                                            <p class="mb-2"><strong>Expected Result:</strong></p>
+                                            <p class="ms-2"><?= htmlspecialchars($row['expected_results']); ?></p>
+                                            
+                                            <p class="mb-2"><strong>Test Steps:</strong></p>
+                                            <p class="ms-2"><?= htmlspecialchars($row['test_steps']); ?></p>
+                                        </div>
+                                        
+                                        <form class="test-form" data-id="<?= $testcase_id; ?>" action="update_testcases.php" method="POST" enctype="multipart/form-data" <?= $is_updated ? 'disabled' : '' ?>>
                                             <input type="hidden" name="id" value="<?= $testcase_id; ?>">
                                             <input type="hidden" name="tested_by_name" value="<?= htmlspecialchars($_SESSION['user']) ?>">
                                             <input type="hidden" name="tested_at" value="<?= date('Y-m-d H:i:s'); ?>">
-                                            <input type="hidden" name="device_name" value="<?= htmlspecialchars($device_name); ?>">
-                                            <input type="hidden" name="android_version" value="<?= htmlspecialchars($android_version); ?>">
                                             <input type="hidden" name="product_name" value="<?= htmlspecialchars($selected_product); ?>">
                                             <input type="hidden" name="version" value="<?= htmlspecialchars($selected_version); ?>">
                                             
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <label for="actual_result_<?= $testcase_id; ?>">Actual Result:</label>
-                                                    <textarea id="actual_result_<?= $testcase_id; ?>" name="actual_result" class="form-control" required><?= htmlspecialchars($row['actual_result']); ?></textarea>
+                                            <!-- Hidden device fields that will be populated by JavaScript -->
+                                            <input type="hidden" name="device_name" id="device_name_<?= $testcase_id ?>" value="">
+                                            <input type="hidden" name="android_version" id="android_version_<?= $testcase_id ?>" value="">
+                                            
+                                            <div class="test-result">
+                                                <p class="mb-2"><strong>Testing Result:</strong></p>
+                                                <div class="radio-group">
+                                                    <label class="pass-label">
+                                                        <input type="radio" name="testing_result" value="Pass" class="me-1 result-radio" data-id="<?= $testcase_id ?>" <?= ($testing_result == 'Pass') ? 'checked' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>>
+                                                        <i class="fas fa-check-circle me-1"></i> Pass
+                                                    </label>
+                                                    <label class="fail-label">
+                                                        <input type="radio" name="testing_result" value="Fail" class="me-1 result-radio" data-id="<?= $testcase_id ?>" <?= ($testing_result == 'Fail') ? 'checked' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>>
+                                                        <i class="fas fa-times-circle me-1"></i> Fail
+                                                    </label>
                                                 </div>
-                                                <div class="col-md-6">
-                                                    <label for="file_attachment_<?= $testcase_id; ?>">Attach Screenshot:</label>
-                                                    <input type="file" id="file_attachment_<?= $testcase_id; ?>" name="file_attachment" class="form-control">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label for="testing_result_<?= $testcase_id; ?>">Testing Result:</label>
-                                                    <select id="testing_result_<?= $testcase_id; ?>" name="testing_result" class="form-select">
-                                                        <option value="Pass" <?= ($row['testing_result'] == 'Pass') ? 'selected' : ''; ?>>Pass</option>
-                                                        <option value="Fail" <?= ($row['testing_result'] == 'Fail') ? 'selected' : ''; ?>>Fail</option>
+                                                <?php if (empty($testing_result)): ?>
+                                                    <p class="result-not-selected">Please select a test result</p>
+                                                <?php endif; ?>
+                                            </div>
+                                            
+                                            <div id="bug-details-<?= $testcase_id ?>" class="bug-details <?= ($testing_result == 'Fail') ? 'bug-details-fail' : 'd-none'; ?>">
+                                                <div class="mb-3">
+                                                    <label for="bug_type_<?= $testcase_id; ?>" class="form-label">Bug Type:</label>
+                                                    <select id="bug_type_<?= $testcase_id; ?>" name="bug_type" class="form-select" <?= ($testing_result != 'Fail') ? 'disabled' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>>
+                                                        <option value="">Select Bug Type</option>
+                                                        <option value="Critical" <?= ($row['bug_type'] == 'Critical') ? 'selected' : ''; ?>>Critical</option>
+                                                        <option value="High" <?= ($row['bug_type'] == 'High') ? 'selected' : ''; ?>>High</option>
+                                                        <option value="Low" <?= ($row['bug_type'] == 'Low') ? 'selected' : ''; ?>>Low</option>
                                                     </select>
                                                 </div>
-                                                <div class="col-md-6">
-                                                    <label for="bug_type_<?= $testcase_id; ?>">Bug Type:</label>
-                                                    <select id="bug_type_<?= $testcase_id; ?>" name="bug_type" class="form-select">
-														<option value="Nil" <?= ($row['bug_type'] == 'Nil') ? 'selected' : ''; ?>>Nil</option>
-														<option value="Low" <?= ($row['bug_type'] == 'Low') ? 'selected' : ''; ?>>Low</option>
-                                                        <option value="High" <?= ($row['bug_type'] == 'High') ? 'selected' : ''; ?>>High</option>
-														<option value="Critical" <?= ($row['bug_type'] == 'Critical') ? 'selected' : ''; ?>>Critical</option>
-                                                        
-                                                     </select>    
+                                                
+                                                <div class="mb-3">
+                                                    <label for="actual_result_<?= $testcase_id; ?>" class="form-label">Actual Result:</label>
+                                                    <textarea id="actual_result_<?= $testcase_id; ?>" name="actual_result" class="form-control" <?= ($testing_result != 'Fail') ? 'disabled' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>><?= htmlspecialchars($row['actual_result']); ?></textarea>
                                                 </div>
-                                                <div class="col-md-12 mt-3">
-                                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="file_attachment_<?= $testcase_id; ?>" class="form-label">Attach Screenshot:</label>
+                                                    <input type="file" id="file_attachment_<?= $testcase_id; ?>" name="file_attachment" class="form-control" <?= ($testing_result != 'Fail') ? 'disabled' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>>
+                                                    <?php if (!empty($row['file_attachment'])): ?>
+                                                        <small class="text-muted">Current file: <?= basename($row['file_attachment']) ?></small>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
+                                            
+                                            <button type="submit" class="btn btn-primary mt-2" <?= $is_updated ? 'disabled' : '' ?>>Submit</button>
                                         </form>
                                     </div>
                                 </div>
@@ -506,129 +587,238 @@ $android_version = $_SESSION['android_version'] ?? '';
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-		$(document).ready(function() {
-    // Toggle admin links
-    function toggleAdminLinks() {
-        $('.admin-links').toggleClass('show');
-    }
+        $(document).ready(function() {
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+              return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+            
+            // APK Download functionality
+            let versionMap = {}; // Stores file names mapped to version names
 
-    // Form toggle function
-    function toggleForm(testcaseId) {
-        const form = $('#form-' + testcaseId);
-        $('.hidden-form').not(form).removeClass('active');
-        form.toggleClass('active');
+            $("#folderSelect").change(function() {
+                let folder = $(this).val();
+                let versionSelect = $("#versionSelect");
+                let downloadBtn = $("#downloadBtn");
 
-        // Highlight the active card
-        $('.card').removeClass('active-card');
-        if (form.hasClass('active')) {
-            $('#card-' + testcaseId).addClass('active-card');
-        }
-    }
+                versionSelect.html("<option value=''>Loading...</option>");
+                versionSelect.prop("disabled", true);
+                downloadBtn.prop("disabled", true);
+                versionMap = {}; // Reset version mapping
 
-    // Attach click event to toggle buttons
-    $(document).on('click', '.toggle-form-btn', function(e) {
-        e.preventDefault();
-        const testcaseId = $(this).data('id');
-        toggleForm(testcaseId);
-    });
+                if (folder) {
+                    $.get(`apk_download_api.php?fetch_versions=${folder}`, function(data) {
+                        versionSelect.html("<option value=''>Select Version</option>");
 
-    // AJAX form submission
-    $(document).on('submit', '.ajax-form', function(e) {
-        e.preventDefault();
-        const form = $(this);
-        const testcaseId = form.data('id');
-        const formData = new FormData(this);
+                        data.forEach(item => {
+                            versionMap[item.version] = item.filename; // Map version to filename
+                            versionSelect.append(`<option value='${item.version}'>${item.version}</option>`);
+                        });
 
-        // Show loading spinner
-        $('.spinner-overlay').addClass('show');
-
-        $.ajax({
-            url: 'update_testcases.php',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            success: function(response) {
-                // Hide loading spinner
-                $('.spinner-overlay').removeClass('show');
-
-                // Show success message
-                const messageDiv = $('#submission-message');
-                messageDiv.removeClass('error').addClass('success');
-                messageDiv.html('Test case updated successfully!');
-                messageDiv.fadeIn().delay(3000).fadeOut();
-
-                // Add check mark if not already present
-                const cardElement = $('#card-' + testcaseId);
-                const updateBtn = cardElement.find('.update-btn');
-                if (updateBtn.find('.tick-icon').length === 0) {
-                    updateBtn.append('<i class="fas fa-check tick-icon" title="Test Case Updated"></i>');
+                        versionSelect.prop("disabled", false);
+                    });
                 }
+            });
 
-                // Hide the form after submission
-                toggleForm(testcaseId);
+            $("#versionSelect").change(function() {
+                $("#downloadBtn").prop("disabled", !$(this).val());
+            });
 
-                // If there's a next test case ID, scroll to it
-                if (response.next_id) {
-                    const nextCard = $('#card-' + response.next_id);
-                    if (nextCard.length) {
-                        $('html, body').animate({
-                            scrollTop: nextCard.offset().top - 100
-                        }, 500);
+            $("#downloadBtn").click(function() {
+                let folder = $("#folderSelect").val();
+                let version = $("#versionSelect").val();
+                let filename = versionMap[version]; // Get full filename based on version
+
+                if (folder && filename) {
+                    // Close the modal
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('apkDownloadModal'));
+                    modal.hide();
+                    
+                    // Start the download
+                    window.location.href = `uploads/${folder}/${filename}`;
+                }
+            });
+            
+            // Test Result Change Handling
+            $(document).on('change', '.result-radio', function() {
+                const testcaseId = $(this).data('id');
+                const result = $(this).val();
+                const bugDetails = $('#bug-details-' + testcaseId);
+                
+                const bugType = $(`#bug_type_${testcaseId}`);
+                const actualResult = $(`#actual_result_${testcaseId}`);
+                const fileAttachment = $(`#file_attachment_${testcaseId}`);
+                
+                if (result === 'Fail') {
+                    bugDetails.slideDown();
+                    $('#actual_result_' + testcaseId).prop('required', true);
+                    
+                    bugDetails.removeClass('d-none');
+                    bugDetails.addClass('bug-details-fail');
+                    
+                    // Enable input fields
+                    bugType.prop('disabled', false);
+                    actualResult.prop('disabled', false);
+                    fileAttachment.prop('disabled', false);
+                    
+                    // Clear existing values
+                    bugType.val('');
+                    actualResult.val('');
+                    fileAttachment.val('');
+                } else {
+                    bugDetails.slideUp();
+                    $('#actual_result_' + testcaseId).prop('required', false);
+                    
+                    bugDetails.addClass('d-none');
+                    bugDetails.removeClass('bug-details-fail');
+                    
+                    // Disable and clear input fields
+                    bugType.prop('disabled', true).val('');
+                    actualResult.prop('disabled', true).val('');
+                    fileAttachment.prop('disabled', true).val('');
+                }
+                
+                // Remove "not selected" message when a result is chosen
+                $(this).closest('.test-result').find('.result-not-selected').remove();
+            });
+            
+            // Trigger the change event for any pre-selected "Fail" radio buttons
+            $('.result-radio:checked').each(function() {
+                if ($(this).val() === 'Fail') {
+                    $(this).trigger('change');
+                }
+            });
+
+            // Enhanced form validation
+            $(document).on('submit', '.test-form', function(e) {
+                e.preventDefault();
+                const form = $(this);
+                const testcaseId = form.data('id');
+                const cardElement = $('#card-' + testcaseId);
+                
+                // Get the global device info
+                const deviceName = $('#global_device_name').val();
+                const androidVersion = $('#global_android_version').val();
+                
+                // Validate device info is entered
+                if (!deviceName || !androidVersion) {
+                    showAlert('danger', 'Please enter Device Name and Android Version before submitting test results');
+                    $('#global_device_name').focus();
+                    return;
+                }
+                
+                // Validate test result is selected
+                const selectedResult = form.find('input[name="testing_result"]:checked').val();
+                if (!selectedResult) {
+                    showAlert('danger', 'Please select a test result (Pass or Fail)');
+                    return;
+                }
+                
+                // Additional validation for failed tests
+                if (selectedResult === 'Fail') {
+                    const actualResult = form.find('#actual_result_' + testcaseId).val().trim();
+                    if (!actualResult) {
+                        showAlert('danger', 'Please describe the actual result for failed tests');
+                        form.find('#actual_result_' + testcaseId).focus();
+                        return;
                     }
                 }
-            },
-            error: function(xhr, status, error) {
-                // Hide loading spinner
-                $('.spinner-overlay').removeClass('show');
+                
+                // Set the device info in the hidden fields
+                form.find('#device_name_' + testcaseId).val(deviceName);
+                form.find('#android_version_' + testcaseId).val(androidVersion);
+                
+                // Show loading spinner
+                $('.spinner-overlay').addClass('show');
+                
+                // Create FormData object from the form
+                const formData = new FormData(this);
+                formData.append('testing_result', selectedResult);
+                
+                $.ajax({
+                    url: form.attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        // Hide loading spinner
+                        $('.spinner-overlay').removeClass('show');
+                        
+                        try {
+                            // Parse the response
+                            const data = typeof response === 'string' ? JSON.parse(response) : response;
+                            
+                            if (data.status === 'success' || data.success) {
+                                showAlert('success', data.message || 'Test case updated successfully');
+                                
+                                // Update the UI for this specific test case
+                                updateTestedUI(cardElement, selectedResult);
+                                
+                                // If there's a next ID, scroll to it
+                                if (data.next_id && data.next_id > 0) {
+                                    const nextCard = $('#card-' + data.next_id);
+                                    if (nextCard.length) {
+                                        $('html, body').animate({
+                                            scrollTop: nextCard.offset().top - 100
+                                        }, 500);
+                                    }
+                                }
+                            } else {
+                                showAlert('danger', data.message || 'Error updating test case');
+                            }
+                        } catch (e) {
+                            showAlert('danger', 'Invalid server response: ' + e.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('.spinner-overlay').removeClass('show');
+                        showAlert('danger', 'Error updating test case: ' + error);
+                    }
+                });
+            });
 
-                // Show error message
-                const messageDiv = $('#submission-message');
-                messageDiv.removeClass('success').addClass('error');
-                messageDiv.html('Error updating test case: ' + xhr.responseText);
-                messageDiv.fadeIn().delay(3000).fadeOut();
+            // Update UI after successful submission
+            function updateTestedUI(cardElement, result) {
+                // Add tested badge
+                cardElement.prepend('<span class="badge bg-success tested-badge"><i class="fas fa-check"></i> Tested</span>');
+                
+                // Disable the form after successful submission
+                cardElement.find('input, textarea, select, button').prop('disabled', true);
+                
+                // Add card-disabled class to gray out the card
+                cardElement.addClass('card-disabled');
+                
+                // Add animation class based on result
+                if (result === 'Pass') {
+                    cardElement.addClass('card-pass');
+                } else {
+                    cardElement.addClass('card-fail');
+                }
+                
+                // Remove animation classes after animation completes
+                setTimeout(function() {
+                    cardElement.removeClass('card-pass card-fail');
+                }, 2000);
+            }
+
+            function showAlert(type, message) {
+                const alertDiv = $('#submission-message');
+                alertDiv.removeClass('alert-success alert-danger')
+                       .addClass(`alert-${type}`)
+                       .text(message)
+                       .fadeIn()
+                       .delay(3000)
+                       .fadeOut();
             }
         });
-    });
-
-    // Reset filters
-    $(document).on('click', 'button[name="reset"]', function(e) {
-        e.preventDefault();
-        $('#product_name, #version').val('');
-        $('#device_name, #android_version').val('');
-        $('#filter-form').submit();
-    });
-
-    // Toggle admin links
-    $('.admin-section h4').on('click', function() {
-        toggleAdminLinks();
-    });
-
-    // View More functionality
-    $(document).on('click', '.view-more-btn', function() {
-        const cardDetails = $(this).closest('.card-details');
-        cardDetails.find('p').css('-webkit-line-clamp', 'unset');
-        $(this).remove();
-    });
-
-    // Dynamically show/hide bug type options based on testing result
-    $(document).on('change', 'select[name="testing_result"]', function() {
-        const bugTypeSelect = $(this).closest('form').find('select[name="bug_type"]');
-        if ($(this).val() === 'Fail') {
-            bugTypeSelect.html(`
-                <option value="Critical">Critical</option>
-                <option value="High">High</option>
-                <option value="Low">Low</option>
-            `);
-        } else {
-            bugTypeSelect.html('<option value="Nil">Nil</option>');
+       
+        // Function to toggle admin links visibility
+        function toggleAdminLinks() {
+            const adminLinks = document.querySelector('.admin-links');
+            adminLinks.style.display = adminLinks.style.display === 'none' ? 'block' : 'none';
         }
-    });
-});
     </script>
 </body>
 </html>
-                            

@@ -6,7 +6,7 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
     // Last request was more than 5 minutes ago
     session_unset();     // Unset $_SESSION variable for this page
     session_destroy();   // Destroy session data
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 $_SESSION['last_activity'] = time(); // Update last activity time stamp
@@ -28,8 +28,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         /* Your existing CSS styles */
-        /* ... (Copy all your CSS styles here) ... */
-				html, body {
+        html, body {
             height: 100%;
             margin: 0;
             padding: 0;
@@ -90,7 +89,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             margin-left: 220px; /* Offset for the fixed sidebar */
             overflow-y: auto; /* Enables scrolling */
         }
-		.admin-section h4 {
+        .admin-section h4 {
             font-size: 16px; /* Match this to the sidebar links' font size */
             cursor: pointer; /* Indicates it's clickable */
         }
@@ -129,11 +128,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             transition: transform 0.2s, box-shadow 0.2s;
             background-color: #fff;
             padding: 15px;
-        }
-
-        .bug-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: auto; /* Allow height to adjust */
         }
 
         .bug-card-header {
@@ -171,7 +168,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         }
 
         .bug-card-body {
-            margin-bottom: 10px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .bug-info {
@@ -533,10 +532,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
             adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
         }
 
-        // Toggle expandable section
+        // Toggle expandable section - FIXED VERSION
         function toggleExpandableSection(id) {
-            const expandableSection = document.getElementById(`expandable_${id}`);
-            const viewMoreBtn = expandableSection.previousElementSibling.querySelector('.view-more-btn');
+            const expandableSection = document.getElementById('expandable_' + id);
+            const viewMoreBtn = expandableSection.closest('.bug-card-body').querySelector('.view-more-btn');
 
             if (expandableSection.classList.contains('expanded')) {
                 expandableSection.classList.remove('expanded');

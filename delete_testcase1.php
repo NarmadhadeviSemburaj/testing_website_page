@@ -7,13 +7,14 @@ if ($conn->connect_error) {
 
 $id = $_GET['id'] ?? null;
 
-if (!$id || !is_numeric($id)) {
+// Validate the ID as a non-empty string
+if (!$id || !is_string($id)) {
     die("Invalid or missing ID");
 }
 
 // Use prepared statements to prevent SQL injection
 $stmt = $conn->prepare("DELETE FROM testcase WHERE id = ?");
-$stmt->bind_param("i", $id);
+$stmt->bind_param("s", $id); // Use "s" for string type
 
 if ($stmt->execute()) {
     header("Location: index1.php");

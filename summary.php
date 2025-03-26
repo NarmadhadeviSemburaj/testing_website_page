@@ -1,20 +1,9 @@
 <?php
 session_start();
 
-// Set session timeout to 5 minutes (300 seconds)
-$timeout = 300; // 5 minutes in seconds
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
-    // Last request was more than 5 minutes ago
-    session_unset();     // Unset $_SESSION variable for this page
-    session_destroy();   // Destroy session data
-    header("Location: login.php");
-    exit();
-}
-$_SESSION['last_activity'] = time(); // Update last activity time stamp
-
 // Ensure only logged-in users can access
 if (!isset($_SESSION['user'])) {
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 
@@ -33,7 +22,6 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Fetch MIS Testing Summary
 $sql = "SELECT 
             DATE(tested_at) as date,
             COUNT(id) AS total_tests,
@@ -42,12 +30,11 @@ $sql = "SELECT
             SUM(CASE WHEN bug_type = 'Critical' THEN 1 ELSE 0 END) AS critical_bugs,
             SUM(CASE WHEN bug_type = 'High' THEN 1 ELSE 0 END) AS high_bugs,
             SUM(CASE WHEN bug_type = 'Low' THEN 1 ELSE 0 END) AS low_bugs,
-            SUM(CASE WHEN cleared_flag = 1 THEN 1 ELSE 0 END) AS fixes_done
+            SUM(CASE WHEN testing_result = 'Fail' THEN 1 ELSE 0 END) AS fixes_done
         FROM testcase
-        WHERE tested_at IS NOT NULL
         GROUP BY DATE(tested_at)
         ORDER BY DATE(tested_at) DESC
-        LIMIT 10";
+        LIMIT 3";
 
 $result = $conn->query($sql);
 $testing_summary = [];
@@ -60,6 +47,7 @@ if ($result->num_rows > 0) {
 
 $conn->close();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -70,7 +58,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-               html, body {
+        html, body {
             height: 100%;
             margin: 0;
             padding: 0;
@@ -203,7 +191,7 @@ $conn->close();
             font-size: 16px;
             margin: 5px 0 0;
             color: #333;
-        } 
+        }
     </style>
 </head>
 <body>
@@ -251,7 +239,7 @@ $conn->close();
             <!-- Welcome Message and Start Testing Button -->
             <div class="welcome-section">
                 <div class="welcome-message">
-                    <h4>Welcome Back, <?php echo htmlspecialchars($_SESSION['user']); ?>!</h4>
+                    <h3>Welcome Back, <?php echo htmlspecialchars($_SESSION['user']); ?>!</h3>
                     <p>Today is <?php echo date('l, F j, Y'); ?>.</p>
                 </div>
                 <div class="start-testing-btn">
@@ -264,8 +252,8 @@ $conn->close();
             <hr class="my-4">
 
             <!-- MIS Testing Summary -->
-            <h5>📊 MIS Testing Summary</h5>
-            <table class="table table-bordered">
+            <h2>📊 MIS Testing Summary</h2>
+            <table>
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -296,43 +284,7 @@ $conn->close();
         </div>
     </div>
 
-    <!-- Session Timeout Popup -->
-    <div id="sessionPopup" class="modal fade" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Session Expiring Soon</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Your session will expire in 2 minutes. Please save your work.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Session timeout in milliseconds (5 minutes)
-        const sessionTimeout = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-        // Time before showing the popup (2 minutes before timeout)
-        const popupTime = 2 * 60 * 1000; // 2 minutes in milliseconds
-
-        // Show the session timeout popup
-        setTimeout(() => {
-            const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
-            sessionPopup.show();
-        }, sessionTimeout - popupTime);
-
-        // Logout the user after session timeout
-        setTimeout(() => {
-            window.location.href = 'logout.php';
-        }, sessionTimeout);
-
         // Function to toggle the visibility of admin links
         function toggleAdminLinks() {
             const adminLinks = document.querySelector('.admin-links');

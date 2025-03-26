@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (!isset($_SESSION['user'])) {
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 
@@ -52,10 +52,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
 				top: 20px; /* Keeps margin spacing */
 				bottom: 20px;
 			}
-
 			/* Sidebar Links */
 			.sidebar a {
-				display: block;
+				display: flex;
+				align-items: center; /* Align icon and text horizontally */
 				padding: 10px;
 				margin: 10px 0;
 				text-decoration: none;
@@ -68,9 +68,58 @@ $current_page = basename($_SERVER['PHP_SELF']);
 				background-color: #007bff;
 				color: #fff;
 			}
+
 			.sidebar a i {
-						margin-right: 10px; /* Adjust spacing */
-					}
+				margin-right: 10px; /* Space between icon and text */
+			}
+
+			/* Light Line Separator */
+			.separator {
+				height: 1px;
+				background-color: #ddd; /* Light grey line */
+				margin: 20px 0; /* Space above and below the line */
+			}
+
+			/* Admin Section */
+			.admin-section h4 {
+				font-size: 16px; /* Match this to the sidebar links' font size */
+				cursor: pointer; /* Indicates it's clickable */
+				text-align: center; /* Center the text */
+				margin: 10px 0; /* Match margin with other links */
+				padding: 10px; /* Match padding with other links */
+				border-radius: 10px; /* Match border-radius with other links */
+				transition: background-color 0.3s; /* Smooth transition for hover effect */
+			}
+
+			.admin-section h4:hover {
+				background-color: #007bff; /* Change background color on hover */
+				color: #fff; /* Change text color on hover */
+			}
+
+			.admin-links {
+				display: none; /* Initially hidden */
+			}
+
+			.admin-links a {
+				display: flex;
+				align-items: center; /* Align icon and text horizontally */
+				padding: 10px;
+				margin: 5px 0;
+				text-decoration: none;
+				color: #333;
+				border-radius: 10px;
+				transition: background-color 0.3s;
+			}
+
+			.admin-links a:hover {
+				background-color: #007bff;
+				color: #fff;
+			}
+
+			.admin-links a i {
+				margin-right: 10px; /* Space between icon and text */
+			}
+			
 
 			/* Content Container: Scrollable */
 			.content-container {
@@ -83,16 +132,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 				margin-left: 220px; /* Offset for the fixed sidebar */
 				overflow-y: auto; /* Enables scrolling */
 			}
-			.admin-section h4 {
-				font-size: 16px; /* Match this to the sidebar links' font size */
-				cursor: pointer; /* Indicates it's clickable */
-				
-			}
-			.admin-section {
-						margin-top: 20px;
-						padding-top: 20px;
-						border-top: 1px solid #ddd;
-					}
+			
 
 			/* User Info */
 			.user-info {
@@ -110,9 +150,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 				margin: 5px 0 0;
 				color: #333;
 			}
-			.admin-links {
-            display: none; /* Initially hidden */
-			}
+			
 
         .welcome-message {
             text-align: center;
@@ -130,40 +168,45 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="fas fa-user"></i>
                 <h4><?php echo htmlspecialchars($_SESSION['user']); ?></h4>
             </div>
+					<div class="sidebar">
+				<!-- Regular Links with Icons -->
+				<a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
+					<i class="fas fa-tachometer-alt"></i> Dashboard
+				</a>
+				<a href="update_tc3.php" class="<?php echo ($current_page == 'update_tc3.php') ? 'active' : ''; ?>">
+					<i class="fas fa-vial"></i> Testing
+				</a>
+				<a href="bug_details.php" class="<?php echo ($current_page == 'bug_details.php') ? 'active' : ''; ?>">
+					<i class="fas fa-bug"></i> Bug Reports
+				</a>
+				<a href="logout.php" class="text-danger <?php echo ($current_page == 'logout.php') ? 'active' : ''; ?>">
+					<i class="fas fa-sign-out-alt"></i> Logout
+				</a>
 
-            <!-- Sidebar Menu -->
-            <div class="sidebar">
-                <a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-tachometer-alt"></i> Dashboard
-                </a>
-                <a href="update_tc3.php" class="<?php echo ($current_page == 'update_tc3.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-vial"></i> Testing
-                </a>
-                <a href="bug_details.php" class="<?php echo ($current_page == 'bug_details.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-bug"></i> Bug Reports
-                </a>
-                <a href="logout.php" class="text-danger <?php echo ($current_page == 'logout.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
+				<!-- Light Line Separator -->
+				<div class="separator"></div>
 
-                <?php if ($_SESSION['is_admin']): ?>
-                    <div class="admin-section">
-                        <h4 onclick="toggleAdminLinks()"><i class="fas fa-cogs"></i> Admin <i class="fas fa-chevron-down"></i></h4>
-                        <div class="admin-links">
-                            <a href="employees.php" class="<?php echo ($current_page == 'employees.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-users"></i> Employees
-                            </a>
-                            <a href="apk_up.php" class="<?php echo ($current_page == 'apk_up.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-upload"></i> APK Admin
-                            </a>
-                            <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-list-alt"></i> TCM
-                            </a>
-                        </div>
-                    </div>
-                <?php endif; ?>
-            </div>
+				<!-- Admin Section (No Icon) -->
+				<?php if ($_SESSION['is_admin']): ?>
+					<div class="admin-section">
+						<h4 onclick="toggleAdminLinks()">Admin</h4> <!-- No icon here -->
+						<div class="admin-links">
+							<a href="employees.php" class="<?php echo ($current_page == 'employees.php') ? 'active' : ''; ?>">
+								<i class="fas fa-users"></i> Employees
+							</a>
+							<a href="apk_up.php" class="<?php echo ($current_page == 'apk_up.php') ? 'active' : ''; ?>">
+								<i class="fas fa-upload"></i> APK Admin
+							</a>
+							<a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
+								<i class="fas fa-list-alt"></i> TCM
+							</a>
+						</div>
+					</div>
+    <?php endif; ?>
+</div>	
+
         </div>
+            <!-- Sidebar Menu -->
 
         <!-- Main Content -->
         <div class="content-container">

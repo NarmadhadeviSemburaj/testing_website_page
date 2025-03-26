@@ -6,7 +6,7 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
     // Last request was more than 5 minutes ago
     session_unset();     // Unset $_SESSION variable for this page
     session_destroy();   // Destroy session data
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 $_SESSION['last_activity'] = time(); // Update last activity time stamp
