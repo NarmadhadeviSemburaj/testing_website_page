@@ -78,11 +78,11 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
         .wrapper {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             padding: 20px;
         }
         .sidebar-container {
@@ -98,6 +98,11 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             left: 20px;
             top: 20px;
             bottom: 20px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .sidebar-container.collapsed {
+            transform: translateX(-240px);
         }
         .sidebar a {
             display: block;
@@ -121,18 +126,29 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             border-radius: 10px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            height: 100vh;
+            min-height: 100vh;
             margin-left: 220px;
-            overflow-y: auto;
+            transition: margin-left 0.3s ease;
+        }
+        .content-container.expanded {
+            margin-left: 20px;
         }
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background-color 0.3s;
+        }
+        .admin-section h4:hover {
+            background-color: #007bff;
+            color: #fff;
         }
         .admin-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
         }
         .user-info {
             text-align: center;
@@ -174,6 +190,8 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
         }
         .card:hover {
             transform: translateY(-5px);
@@ -189,10 +207,16 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
         }
         .card-body {
             padding: 15px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
         }
         .info-icon {
             color: #007bff;
             cursor: pointer;
+        }
+        .test-form {
+            margin-top: auto;
         }
         .test-result {
             margin: 15px 0;
@@ -244,6 +268,9 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             opacity: 0;
             transition: visibility 0s, opacity 0.3s;
         }
+        .submit-btn-container {
+            margin-top: 15px;
+        }
         .spinner-overlay.show {
             visibility: visible;
             opacity: 1;
@@ -259,20 +286,25 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             border: none;
             box-shadow: none;
         }
-        .device-info-banner {
-            margin-bottom: 20px;
-            padding: 10px 15px;
-            border-radius: 5px;
-        }
-        .result-not-selected {
-            color: #6c757d;
-            font-style: italic;
-        }
         .bug-details-fail {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background-color: #e7f1ff;
+            border-left: 4px solid #007bff;
             padding: 10px;
             margin-top: 10px;
+            border-radius: 5px;
+        }
+        .bug-details-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: flex-end;
+        }
+        .bug-details-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .bug-details-row .form-group:last-child {
+            flex: 0 0 200px;
         }
         .card-pass {
             animation: pulsePass 2s;
@@ -292,19 +324,87 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
             100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
         }
-        .tested-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1;
-        }
         .card-disabled {
             opacity: 0.8;
             background-color: #f8f9fa;
         }
+        .tested-badge {
+            display: none;
+        }
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            z-index: 1050;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 767.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: block;
+            }
+            .col-md-4 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            .bug-details-row {
+                flex-direction: column;
+            }
+            .bug-details-row .form-group:last-child {
+                flex: 1;
+                width: 100%;
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .col-md-4 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            .sidebar-container {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                border-radius: 0;
+                margin-right: 0;
+            }
+            .content-container {
+                margin-left: 220px;
+            }
+        }
+        
+        @media (min-width: 992px) {
+            .col-md-4 {
+                flex: 0 0 33.333333%;
+                max-width: 33.333333%;
+            }
+        }
     </style>
 </head>
 <body>
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+    
     <div class="spinner-overlay">
         <div class="spinner-border text-light" role="status">
             <span class="visually-hidden">Loading...</span>
@@ -347,7 +447,7 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
     
     <div class="wrapper">
         <!-- Sidebar -->
-        <div class="sidebar-container">
+        <div class="sidebar-container" id="sidebarContainer">
             <!-- User Info Section -->
             <div class="user-info">
                 <i class="fas fa-user"></i>
@@ -380,7 +480,7 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
                                 <i class="fas fa-upload"></i> APK Admin
                             </a>
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-list-alt"></i> Test Case Manager
+                                <i class="fas fa-list-alt"></i> TCM
                             </a>
                         </div>
                     </div>
@@ -388,10 +488,8 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             </div>
         </div>
            
-       
-
         <!-- Main Content -->
-        <div class="content-container">
+        <div class="content-container" id="contentContainer">
             <h3>Testing</h3>
             
             <!-- Notification area for submission feedback -->
@@ -459,15 +557,6 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
                 </form>
             </div>
 
-            <!-- Device Info Banner -->
-            <?php if (!empty($device_name) || !empty($android_version)): ?>
-                <div class="alert alert-info device-info-banner">
-                    <strong>Current Testing Device:</strong> 
-                    <?= htmlspecialchars($device_name) ?> 
-                    (Android <?= htmlspecialchars($android_version) ?>)
-                </div>
-            <?php endif; ?>
-
             <!-- Test Cases Section -->
             <div id="test-cases-container">
                 <?php
@@ -487,93 +576,85 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
                             $is_updated = !empty($row['tested_by_name']);
                             $testing_result = $row['testing_result'] ?? '';
                         ?>
-                            <div class="col-md-4 mb-3">
-                                <div class="card h-100 <?= $is_updated ? 'card-disabled' : '' ?>" id="card-<?= $testcase_id ?>">
-                                    <?php if ($is_updated): ?>
-                                        <span class="badge bg-success tested-badge">
-                                            <i class="fas fa-check"></i> Tested
-                                        </span>
-                                    <?php endif; ?>
-                                    
-                                    <div class="card-header">
-                                        <span>
-                                            <i class="fas fa-folder me-1"></i> 
-                                            <?= htmlspecialchars($row['Module_name']); ?> 
-                                            <span class="badge bg-secondary ms-1">ID: <?= $testcase_id ?></span>
-                                        </span>
-                                        <i class="fas fa-info-circle info-icon" 
-                                           data-bs-toggle="tooltip" 
-                                           data-bs-html="true" 
-                                           title="<strong>Description:</strong><br><?= htmlspecialchars($row['description']); ?>"></i>
-                                    </div>
-                                    
-                                    <div class="card-body">
-                                        <div class="test-info mb-3">
-                                            <p class="mb-2"><strong>Expected Result:</strong></p>
-                                            <p class="ms-2"><?= htmlspecialchars($row['expected_results']); ?></p>
-                                            
-                                            <p class="mb-2"><strong>Test Steps:</strong></p>
-                                            <p class="ms-2"><?= htmlspecialchars($row['test_steps']); ?></p>
-                                        </div>
-                                        
-                                        <form class="test-form" data-id="<?= $testcase_id; ?>" action="update_testcases.php" method="POST" enctype="multipart/form-data" <?= $is_updated ? 'disabled' : '' ?>>
-                                            <input type="hidden" name="id" value="<?= $testcase_id; ?>">
-                                            <input type="hidden" name="tested_by_name" value="<?= htmlspecialchars($_SESSION['user']) ?>">
-                                            <input type="hidden" name="tested_at" value="<?= date('Y-m-d H:i:s'); ?>">
-                                            <input type="hidden" name="product_name" value="<?= htmlspecialchars($selected_product); ?>">
-                                            <input type="hidden" name="version" value="<?= htmlspecialchars($selected_version); ?>">
-                                            
-                                            <!-- Hidden device fields that will be populated by JavaScript -->
-                                            <input type="hidden" name="device_name" id="device_name_<?= $testcase_id ?>" value="">
-                                            <input type="hidden" name="android_version" id="android_version_<?= $testcase_id ?>" value="">
-                                            
-                                            <div class="test-result">
-                                                <p class="mb-2"><strong>Testing Result:</strong></p>
-                                                <div class="radio-group">
-                                                    <label class="pass-label">
-                                                        <input type="radio" name="testing_result" value="Pass" class="me-1 result-radio" data-id="<?= $testcase_id ?>" <?= ($testing_result == 'Pass') ? 'checked' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>>
-                                                        <i class="fas fa-check-circle me-1"></i> Pass
-                                                    </label>
-                                                    <label class="fail-label">
-                                                        <input type="radio" name="testing_result" value="Fail" class="me-1 result-radio" data-id="<?= $testcase_id ?>" <?= ($testing_result == 'Fail') ? 'checked' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>>
-                                                        <i class="fas fa-times-circle me-1"></i> Fail
-                                                    </label>
-                                                </div>
-                                                <?php if (empty($testing_result)): ?>
-                                                    <p class="result-not-selected">Please select a test result</p>
-                                                <?php endif; ?>
-                                            </div>
-                                            
-                                            <div id="bug-details-<?= $testcase_id ?>" class="bug-details <?= ($testing_result == 'Fail') ? 'bug-details-fail' : 'd-none'; ?>">
-                                                <div class="mb-3">
-                                                    <label for="bug_type_<?= $testcase_id; ?>" class="form-label">Bug Type:</label>
-                                                    <select id="bug_type_<?= $testcase_id; ?>" name="bug_type" class="form-select" <?= ($testing_result != 'Fail') ? 'disabled' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>>
-                                                        <option value="">Select Bug Type</option>
-                                                        <option value="Critical" <?= ($row['bug_type'] == 'Critical') ? 'selected' : ''; ?>>Critical</option>
-                                                        <option value="High" <?= ($row['bug_type'] == 'High') ? 'selected' : ''; ?>>High</option>
-                                                        <option value="Low" <?= ($row['bug_type'] == 'Low') ? 'selected' : ''; ?>>Low</option>
-                                                    </select>
-                                                </div>
-                                                
-                                                <div class="mb-3">
-                                                    <label for="actual_result_<?= $testcase_id; ?>" class="form-label">Actual Result:</label>
-                                                    <textarea id="actual_result_<?= $testcase_id; ?>" name="actual_result" class="form-control" <?= ($testing_result != 'Fail') ? 'disabled' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>><?= htmlspecialchars($row['actual_result']); ?></textarea>
-                                                </div>
-                                                
-                                                <div class="mb-3">
-                                                    <label for="file_attachment_<?= $testcase_id; ?>" class="form-label">Attach Screenshot:</label>
-                                                    <input type="file" id="file_attachment_<?= $testcase_id; ?>" name="file_attachment" class="form-control" <?= ($testing_result != 'Fail') ? 'disabled' : ''; ?> <?= $is_updated ? 'disabled' : '' ?>>
-                                                    <?php if (!empty($row['file_attachment'])): ?>
-                                                        <small class="text-muted">Current file: <?= basename($row['file_attachment']) ?></small>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                            
-                                            <button type="submit" class="btn btn-primary mt-2" <?= $is_updated ? 'disabled' : '' ?>>Submit</button>
-                                        </form>
-                                    </div>
-                                </div>
+                           <div class="col-md-4 mb-3">
+        <div class="card h-100 <?= $is_updated ? 'card-disabled' : '' ?>" id="card-<?= $testcase_id ?>">
+            <div class="card-header">
+                <span>
+                    <i class="fas fa-folder me-1"></i> 
+                    <?= htmlspecialchars($row['Module_name']); ?> 
+                    <span class="badge bg-secondary ms-1">ID: <?= $testcase_id ?></span>
+                </span>
+                <i class="fas fa-info-circle info-icon" 
+                   data-bs-toggle="tooltip" 
+                   data-bs-html="true" 
+                   title="<strong>Description:</strong><br><?= htmlspecialchars($row['description']); ?>"></i>
+            </div>
+            
+            <div class="card-body">
+                <div class="test-info mb-3">
+                    <p class="mb-2"><strong>Expected Result:</strong></p>
+                    <p class="ms-2"><?= htmlspecialchars($row['expected_results']); ?></p>
+                    
+                    <p class="mb-2"><strong>Test Steps:</strong></p>
+                    <p class="ms-2"><?= htmlspecialchars($row['test_steps']); ?></p>
+                </div>
+                
+                <form class="test-form" data-id="<?= $testcase_id; ?>" action="update_testcases.php" method="POST" enctype="multipart/form-data" <?= $is_updated ? 'disabled' : '' ?>>
+                    <input type="hidden" name="id" value="<?= $testcase_id; ?>">
+                    <input type="hidden" name="tested_by_name" value="<?= htmlspecialchars($_SESSION['user']) ?>">
+                    <input type="hidden" name="tested_at" value="<?= date('Y-m-d H:i:s'); ?>">
+                    <input type="hidden" name="product_name" value="<?= htmlspecialchars($selected_product); ?>">
+                    <input type="hidden" name="version" value="<?= htmlspecialchars($selected_version); ?>">
+                    
+                    <!-- Hidden device fields -->
+                    <input type="hidden" name="device_name" id="device_name_<?= $testcase_id ?>" value="">
+                    <input type="hidden" name="android_version" id="android_version_<?= $testcase_id ?>" value="">
+                    
+                    <div class="test-result">
+                        <p class="mb-2"><strong>Testing Result:</strong></p>
+                        <div class="radio-group">
+                            <label class="pass-label">
+                                <input type="radio" name="testing_result" value="Pass" class="me-1 result-radio" data-id="<?= $testcase_id ?>" <?= $is_updated ? 'disabled' : '' ?>>
+                                <i class="fas fa-check-circle me-1"></i> Pass
+                            </label>
+                            <label class="fail-label">
+                                <input type="radio" name="testing_result" value="Fail" class="me-1 result-radio" data-id="<?= $testcase_id ?>" <?= $is_updated ? 'disabled' : '' ?>>
+                                <i class="fas fa-times-circle me-1"></i> Fail
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="bug-details-<?= $testcase_id ?>" class="bug-details d-none">
+                        <div class="bug-details-row">
+                            <div class="form-group">
+                                <label for="bug_type_<?= $testcase_id; ?>" class="form-label">Bug Type:</label>
+                                <select id="bug_type_<?= $testcase_id; ?>" name="bug_type" class="form-select" required disabled>
+                                    <option value="">Select Bug Type</option>
+                                    <option value="Critical">Critical</option>
+                                    <option value="High">High</option>
+                                    <option value="Low">Low</option>
+                                </select>
                             </div>
+                            
+                            <div class="form-group">
+                                <label for="file_attachment_<?= $testcase_id; ?>" class="form-label">Screenshot:</label>
+                                <input type="file" id="file_attachment_<?= $testcase_id; ?>" name="file_attachment" class="form-control" disabled>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="actual_result_<?= $testcase_id; ?>" class="form-label">Actual Result:</label>
+                            <textarea id="actual_result_<?= $testcase_id; ?>" name="actual_result" class="form-control" rows="3" required disabled></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="submit-btn-container">
+                        <button type="submit" class="btn btn-primary w-100" <?= $is_updated ? 'disabled' : '' ?>>Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div> 
                         <?php }
                         echo '</div>';
                     } else {
@@ -592,6 +673,22 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
               return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+            
+            // Toggle sidebar for mobile view
+            $('#sidebarToggle').click(function() {
+                $('#sidebarContainer').toggleClass('show');
+            });
+            
+            // Close sidebar when clicking outside on mobile
+            $(document).click(function(e) {
+                if ($(window).width() < 768) {
+                    if (!$(e.target).closest('#sidebarContainer').length && 
+                        !$(e.target).is('#sidebarToggle') && 
+                        $('#sidebarContainer').hasClass('show')) {
+                        $('#sidebarContainer').removeClass('show');
+                    }
+                }
             });
             
             // APK Download functionality
@@ -678,9 +775,6 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
                     actualResult.prop('disabled', true).val('');
                     fileAttachment.prop('disabled', true).val('');
                 }
-                
-                // Remove "not selected" message when a result is chosen
-                $(this).closest('.test-result').find('.result-not-selected').remove();
             });
             
             // Trigger the change event for any pre-selected "Fail" radio buttons
@@ -717,7 +811,15 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
                 
                 // Additional validation for failed tests
                 if (selectedResult === 'Fail') {
+                    const bugType = form.find('#bug_type_' + testcaseId).val();
                     const actualResult = form.find('#actual_result_' + testcaseId).val().trim();
+                    
+                    if (!bugType) {
+                        showAlert('danger', 'Please select a bug type for failed tests');
+                        form.find('#bug_type_' + testcaseId).focus();
+                        return;
+                    }
+                    
                     if (!actualResult) {
                         showAlert('danger', 'Please describe the actual result for failed tests');
                         form.find('#actual_result_' + testcaseId).focus();
@@ -781,14 +883,19 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
 
             // Update UI after successful submission
             function updateTestedUI(cardElement, result) {
-                // Add tested badge
-                cardElement.prepend('<span class="badge bg-success tested-badge"><i class="fas fa-check"></i> Tested</span>');
-                
                 // Disable the form after successful submission
                 cardElement.find('input, textarea, select, button').prop('disabled', true);
                 
                 // Add card-disabled class to gray out the card
                 cardElement.addClass('card-disabled');
+                
+                // Reset form fields
+                const form = cardElement.find('.test-form');
+                form.find('.result-radio').prop('checked', false);
+                form.find('#bug_type_' + form.data('id')).val('').prop('disabled', true);
+                form.find('#actual_result_' + form.data('id')).val('').prop('disabled', true);
+                form.find('#file_attachment_' + form.data('id')).val('').prop('disabled', true);
+                form.find('.bug-details').addClass('d-none').removeClass('bug-details-fail');
                 
                 // Add animation class based on result
                 if (result === 'Pass') {
@@ -812,6 +919,13 @@ $folders = array_filter(glob('uploads/*'), 'is_dir');
                        .delay(3000)
                        .fadeOut();
             }
+            
+            // Handle window resize
+            $(window).resize(function() {
+                if ($(window).width() >= 768) {
+                    $('#sidebarContainer').removeClass('show');
+                }
+            });
         });
        
         // Function to toggle admin links visibility
