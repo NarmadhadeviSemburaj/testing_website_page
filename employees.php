@@ -361,10 +361,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                     <td>${employee.is_admin == 1 ? 'Yes' : 'No'}</td>
                                     <td>
                                         <a href="edit_employees.php?id=${employee.emp_id}" class="btn btn-sm btn-primary">Edit</a>
-                                        <button onclick="deleteEmployee(${employee.emp_id}, '${employee.emp_name.replace(/'/g, "\\'")}')" 
-                                           class="btn btn-sm btn-danger">
+                                        <a href="delete_employees.php?id=${employee.emp_id}" 
+                                           class="btn btn-sm btn-danger" 
+                                           onclick="return confirm('Are you sure you want to delete this employee?');">
                                            Delete
-                                        </button>
+                                        </a>
                                     </td>
                                 </tr>
                             `;

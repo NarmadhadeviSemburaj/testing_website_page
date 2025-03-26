@@ -1,21 +1,67 @@
 <?php
 session_start();
+include 'log_api.php'; // Make sure this file exists for logging
+
 // Set session timeout to 5 minutes (300 seconds)
-$timeout = 300; // 5 minutes in seconds
+$timeout = 300;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
-    // Last request was more than 5 minutes ago
-    session_unset();     // Unset $_SESSION variable for this page
-    session_destroy();   // Destroy session data
+    // Log session timeout
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'] ?? 'unknown',
+        'session_timeout',
+        "Session timed out due to inactivity",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        401,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    session_unset();
+    session_destroy();
     header("Location: index.php");
     exit();
 }
-$_SESSION['last_activity'] = time(); // Update last activity time stamp
+$_SESSION['last_activity'] = time();
 
 // Check if user is logged in and is an admin
-if (!isset($_SESSION['user']) || $_SESSION['is_admin'] != 1) {
+if (!isset($_SESSION['user']) || !isset($_SESSION['is_admin']) || $_SESSION['is_admin'] != 1) {
+    // Log unauthorized access attempt
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'] ?? 'unknown',
+        'unauthorized_access',
+        "Attempted to access edit employee page without admin privileges",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
     header("Location: home.php");
     exit();
 }
+
+// Log page access
+logUserAction(
+    $_SESSION['emp_id'],
+    $_SESSION['user'],
+    'page_access',
+    "Accessed edit employee page",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
 
 // Define the current page for active link highlighting
 $current_page = basename($_SERVER['PHP_SELF']);
@@ -23,7 +69,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <!-- [Keep all existing head content exactly the same] -->
+	<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Employee - Test Management</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
@@ -198,57 +245,92 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <!-- Your existing modal code -->
     </div>
 
-    <script>
-        // Fetch employee data when the page loads
-        $(document).ready(function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const empId = urlParams.get('id');
-
-            if (!empId) {
-                alert('Employee ID is required');
-                window.location.href = 'employees.php';
-                return;
+	<script>
+    // Enhanced logging function
+    function logAction(action, details = {}, showMessage = false, messageType = '') {
+        // Send to server logs
+        $.ajax({
+            url: 'log_api.php',
+            method: 'POST',
+            data: {
+                action: 'client_log',
+                log_type: action,
+                user_id: '<?php echo $_SESSION['emp_id']; ?>',
+                username: '<?php echo $_SESSION['user']; ?>',
+                details: JSON.stringify(details),
+                message: details.message || '',
+                page: 'edit_employee'
+            },
+            error: function(xhr) {
+                console.error('Logging failed:', xhr.responseText);
             }
+        });
 
-            // Fetch employee data from the API
-            $.ajax({
-                url: `api.php?action=getEmployee&id=${empId}`,
-                method: 'GET',
-                success: function(response) {
-                    if (response.status === 'success') {
-                        const employee = response.data;
-                        $('#emp_id').val(employee.emp_id);
-                        $('#emp_name').val(employee.emp_name);
-                        $('#email').val(employee.email);
-                        $('#mobile_number').val(employee.mobile_number);
-                        $('#designation').val(employee.designation);
-                        $('#is_admin').prop('checked', employee.is_admin == 1); // Set checkbox state
-                    } else {
-                        alert(response.message || 'Failed to fetch employee data');
-                        window.location.href = 'employees.php';
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error fetching employee data:', error);
-                    alert('Failed to fetch employee data');
+        // Show message to user if requested
+        if (showMessage && details.message) {
+            const $msg = $('#status-message');
+            $msg.removeClass('alert-success alert-danger')
+                .addClass(messageType === 'success' ? 'alert-success' : 'alert-danger')
+                .text(details.message)
+                .show();
+        }
+    }
+
+    $(document).ready(function() {
+        // Log page load
+        logAction('page_load', {url: window.location.href});
+        
+        const empId = new URLSearchParams(window.location.search).get('id');
+        if (!empId) {
+            logAction('error', {message: 'Employee ID missing'}, true, 'error');
+            window.location.href = 'employees.php';
+            return;
+        }
+
+        // Fetch employee data
+        $.ajax({
+            url: `api.php?action=getEmployee&id=${empId}`,
+            method: 'GET',
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Populate form fields
+                    const emp = response.data;
+                    $('#emp_id').val(emp.emp_id);
+                    $('#emp_name').val(emp.emp_name);
+                    $('#email').val(emp.email);
+                    $('#mobile_number').val(emp.mobile_number);
+                    $('#designation').val(emp.designation);
+                    $('#is_admin').prop('checked', emp.is_admin == 1);
+                } else {
+                    logAction('employee_fetch_failed', {
+                        message: response.message || 'Failed to load employee data',
+                        employee_id: empId
+                    }, true, 'error');
                 }
-            });
+            },
+            error: function(xhr) {
+                logAction('employee_fetch_error', {
+                    message: 'Network error loading employee data',
+                    status: xhr.status
+                }, true, 'error');
+            }
         });
 
         // Handle form submission
-        $('#editEmployeeForm').on('submit', function(e) {
+        $('#editEmployeeForm').submit(function(e) {
             e.preventDefault();
-
+            
             const formData = {
                 emp_id: $('#emp_id').val(),
                 emp_name: $('#emp_name').val(),
                 email: $('#email').val(),
                 mobile_number: $('#mobile_number').val(),
                 designation: $('#designation').val(),
-                is_admin: $('#is_admin').is(':checked') ? 1 : 0 // Ensure is_admin is 0 when unchecked
+                is_admin: $('#is_admin').is(':checked') ? 1 : 0
             };
 
-            // Send the update request to the API
+            logAction('employee_update_attempt', formData);
+
             $.ajax({
                 url: 'api.php?action=updateEmployee',
                 method: 'POST',
@@ -256,21 +338,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 data: JSON.stringify(formData),
                 success: function(response) {
                     if (response.status === 'success') {
-                        $('#status-message').removeClass('alert-danger').addClass('alert-success').text(response.message).show();
+                        logAction('employee_update_success', {
+                            message: response.message,
+                            employee_id: formData.emp_id,
+                            changes: formData
+                        }, true, 'success');
+                        
                         setTimeout(() => {
                             window.location.href = 'employees.php';
                         }, 2000);
                     } else {
-                        $('#status-message').removeClass('alert-success').addClass('alert-danger').text(response.message || 'Failed to update employee').show();
+                        logAction('employee_update_failed', {
+                            message: response.message || 'Update failed',
+                            employee_id: formData.emp_id
+                        }, true, 'error');
                     }
                 },
-                error: function(xhr, status, error) {
-                    console.error('Error updating employee:', error);
-                    $('#status-message').removeClass('alert-success').addClass('alert-danger').text('Failed to update employee').show();
+                error: function(xhr) {
+                    logAction('employee_update_error', {
+                        message: 'Server error during update',
+                        status: xhr.status,
+                        response: xhr.responseText
+                    }, true, 'error');
                 }
             });
         });
-    </script>
+    });
+</script>
 </body>
 </html>
-

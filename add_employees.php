@@ -1,24 +1,89 @@
 <?php
 session_start();
+include 'log_api.php';
+
 // Set session timeout to 5 minutes (300 seconds)
-$timeout = 300; // 5 minutes in seconds
+$timeout = 300;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
-    // Last request was more than 5 minutes ago
-    session_unset();     // Unset $_SESSION variable for this page
-    session_destroy();   // Destroy session data
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'] ?? 'unknown',
+        'session_timeout',
+        "Session timed out due to inactivity on add employee page",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        401,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    session_unset();
+    session_destroy();
     header("Location: index.php");
     exit();
 }
-$_SESSION['last_activity'] = time(); // Update last activity time stamp
-// Ensure only logged-in admin users can access
-if (!isset($_SESSION['user']) || $_SESSION['is_admin'] != 1) {
-    header("Location: home.php");
+$_SESSION['last_activity'] = time();
+
+// Check if user is logged in
+if (!isset($_SESSION['user'])) {
+    logUserAction(
+        null,
+        'unknown',
+        'unauthorized_access',
+        "Attempted to access add employee page without login",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    header("Location: index.php");
     exit();
 }
 
-// Define the current page for active link highlighting
+// Check if user is admin
+if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'],
+        'unauthorized_admin_access',
+        "Non-admin user attempted to access add employee page",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    header("Location: summary.php");
+    exit();
+}
+
+// Log successful page access
+logUserAction(
+    $_SESSION['emp_id'],
+    $_SESSION['user'],
+    'page_access',
+    "Accessed add employee page",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
+
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,9 +92,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <title>Add Employee - Test Management</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Your existing CSS styles */
-		html, body {
+        html, body {
             height: 100%;
             margin: 0;
             padding: 0;
@@ -147,7 +212,38 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
             <!-- Sidebar Menu -->
             <div class="sidebar">
-                <!-- Your existing sidebar links -->
+                <a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="update_tc3.php" class="<?php echo ($current_page == 'update_tc3.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-vial"></i> Testing
+                </a>
+                <a href="bug_details.php" class="<?php echo ($current_page == 'bug_details.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-bug"></i> Bug Reports
+                </a>
+                <a href="logout.php" class="text-danger <?php echo ($current_page == 'logout.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+
+                <?php if ($_SESSION['is_admin']): ?>
+                    <div class="admin-section">
+                        <h4 onclick="toggleAdminLinks()"><i class="fas fa-cogs"></i> Admin <i class="fas fa-chevron-down"></i></h4>
+                        <div class="admin-links">
+                            <a href="employees.php" class="<?php echo ($current_page == 'employees.php') ? 'active' : ''; ?>">
+                                <i class="fas fa-users"></i> Employees
+                            </a>
+                            <a href="apk_up.php" class="<?php echo ($current_page == 'apk_up.php') ? 'active' : ''; ?>">
+                                <i class="fas fa-upload"></i> APK Admin
+                            </a>
+                            <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
+                                <i class="fas fa-list-alt"></i> TCM
+                            </a>
+                            <a href="view_logs.php">
+                                <i class="fas fa-clipboard-list"></i> View Logs
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -193,12 +289,80 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- Session Timeout Popup -->
     <div id="sessionPopup" class="modal fade" tabindex="-1">
-        <!-- Your existing modal code -->
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Session Expiring Soon</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Your session will expire in 2 minutes. Please save your work.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
+        // Session timeout in milliseconds (5 minutes)
+        const sessionTimeout = 5 * 60 * 1000;
+        const popupTime = 2 * 60 * 1000;
+
+        // Show the session timeout popup
+        setTimeout(() => {
+            const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
+            sessionPopup.show();
+            
+            // Log session timeout warning
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: 'session_timeout_warning',
+                    description: 'Session timeout warning shown on add employee page'
+                },
+                dataType: 'json'
+            });
+        }, sessionTimeout - popupTime);
+
+        // Logout the user after session timeout
+        setTimeout(() => {
+            window.location.href = 'logout.php';
+        }, sessionTimeout);
+
+        function toggleAdminLinks() {
+            const adminLinks = document.querySelector('.admin-links');
+            adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
+            
+            // Log admin links toggle
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: 'admin_links_toggle',
+                    description: 'Toggled admin links visibility'
+                },
+                dataType: 'json'
+            });
+        }
+
         $(document).ready(function() {
+            // Log client-side page load
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: 'page_load',
+                    description: 'Loaded add employee page'
+                },
+                dataType: 'json'
+            });
+
             // Fetch auto-generated emp_id when the page loads
             $.ajax({
                 type: 'GET',
@@ -206,10 +370,36 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 success: function(response) {
                     if (response.status === 'success') {
                         $('input[name="emp_id"]').val(response.emp_id);
+                        
+                        // Log successful emp_id generation
+                        $.ajax({
+                            url: 'log_api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'log_client_action',
+                                action_type: 'emp_id_generated',
+                                description: 'Generated employee ID: ' + response.emp_id,
+                                emp_id: response.emp_id
+                            },
+                            dataType: 'json'
+                        });
                     } else {
                         $('#status-message').removeClass('alert-success').addClass('alert-danger');
                         $('#status-message').text(response.message);
                         $('#status-message').show();
+                        
+                        // Log emp_id generation failure
+                        $.ajax({
+                            url: 'log_api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'log_client_action',
+                                action_type: 'emp_id_generation_failed',
+                                description: response.message,
+                                error: response.message
+                            },
+                            dataType: 'json'
+                        });
                     }
                 },
                 error: function(xhr) {
@@ -220,12 +410,38 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     $('#status-message').removeClass('alert-success').addClass('alert-danger');
                     $('#status-message').text(errorMsg);
                     $('#status-message').show();
+                    
+                    // Log AJAX error for emp_id generation
+                    $.ajax({
+                        url: 'log_api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'log_client_action',
+                            action_type: 'emp_id_generation_error',
+                            description: errorMsg,
+                            error: errorMsg
+                        },
+                        dataType: 'json'
+                    });
                 }
             });
 
             // Handle form submission via AJAX
             $('#addEmployeeForm').on('submit', function(e) {
                 e.preventDefault();
+
+                // Log form submission attempt
+                $.ajax({
+                    url: 'log_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'log_client_action',
+                        action_type: 'employee_add_attempt',
+                        description: 'Attempting to add new employee',
+                        form_data: $('#addEmployeeForm').serialize()
+                    },
+                    dataType: 'json'
+                });
 
                 // Serialize form data
                 const formData = {
@@ -235,7 +451,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     mobile_number: $('input[name="mobile_number"]').val(),
                     designation: $('input[name="designation"]').val(),
                     password: $('input[name="password"]').val(),
-                    is_admin: $('input[name="is_admin"]').is(':checked') ? 1 : 0 // Ensure is_admin is 0 when unchecked
+                    is_admin: $('input[name="is_admin"]').is(':checked') ? 1 : 0
                 };
 
                 // Send AJAX request
@@ -251,6 +467,21 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             $('#status-message').text(response.message);
                             $('#status-message').show();
 
+                            // Log successful employee addition
+                            $.ajax({
+                                url: 'log_api.php',
+                                type: 'POST',
+                                data: {
+                                    action: 'log_client_action',
+                                    action_type: 'employee_add_success',
+                                    description: 'Added new employee: ' + formData.emp_name + ' (ID: ' + formData.emp_id + ')',
+                                    emp_id: formData.emp_id,
+                                    emp_name: formData.emp_name,
+                                    is_admin: formData.is_admin
+                                },
+                                dataType: 'json'
+                            });
+
                             // Reset form
                             $('#addEmployeeForm')[0].reset();
 
@@ -262,6 +493,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             $('#status-message').removeClass('alert-success').addClass('alert-danger');
                             $('#status-message').text(response.message);
                             $('#status-message').show();
+                            
+                            // Log employee addition failure
+                            $.ajax({
+                                url: 'log_api.php',
+                                type: 'POST',
+                                data: {
+                                    action: 'log_client_action',
+                                    action_type: 'employee_add_failed',
+                                    description: response.message,
+                                    error: response.message,
+                                    form_data: formData
+                                },
+                                dataType: 'json'
+                            });
                         }
                     },
                     error: function(xhr) {
@@ -272,6 +517,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         $('#status-message').removeClass('alert-success').addClass('alert-danger');
                         $('#status-message').text(errorMsg);
                         $('#status-message').show();
+                        
+                        // Log AJAX error for employee addition
+                        $.ajax({
+                            url: 'log_api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'log_client_action',
+                                action_type: 'employee_add_error',
+                                description: errorMsg,
+                                error: errorMsg,
+                                form_data: formData
+                            },
+                            dataType: 'json'
+                        });
                     }
                 });
             });

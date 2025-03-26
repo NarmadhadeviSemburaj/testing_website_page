@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'db_config.php';
+include 'log_api.php'; // Include the logging library
 
 // Set header to return JSON
 header('Content-Type: application/json');
@@ -8,6 +9,22 @@ header('Content-Type: application/json');
 // Ensure only logged-in admin users can access
 if (!isset($_SESSION['user']) || $_SESSION['is_admin'] != 1) {
     http_response_code(403);
+    
+    // Log unauthorized access attempt
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'] ?? 'unknown',
+        'unauthorized_api_access',
+        "Attempted to access add_employee_api without proper privileges",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
     echo json_encode([
         'status' => 'error',
         'message' => 'Unauthorized access',
@@ -15,6 +32,21 @@ if (!isset($_SESSION['user']) || $_SESSION['is_admin'] != 1) {
     ]);
     exit();
 }
+
+// Log API request initiation
+logUserAction(
+    $_SESSION['emp_id'],
+    $_SESSION['user'],
+    'api_request',
+    "Started processing add employee request",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
 
 // Get the raw JSON input
 $input_data = json_decode(file_get_contents("php://input"), true);
@@ -24,6 +56,22 @@ $required_fields = ['emp_name', 'email', 'mobile_number', 'designation', 'passwo
 foreach ($required_fields as $field) {
     if (empty($input_data[$field])) {
         http_response_code(400);
+        
+        // Log missing field error
+        logUserAction(
+            $_SESSION['emp_id'],
+            $_SESSION['user'],
+            'validation_error',
+            "Missing required field: $field",
+            $_SERVER['REQUEST_URI'],
+            $_SERVER['REQUEST_METHOD'],
+            json_encode($input_data),
+            400,
+            null,
+            $_SERVER['REMOTE_ADDR'],
+            $_SERVER['HTTP_USER_AGENT']
+        );
+        
         echo json_encode([
             'status' => 'error',
             'message' => "Missing required field: $field",
@@ -54,7 +102,7 @@ $email = trim($input_data['email']);
 $mobile_number = trim($input_data['mobile_number']);
 $designation = trim($input_data['designation']);
 $password = trim($input_data['password']);
-$is_admin = isset($input_data['is_admin']) ? (int)$input_data['is_admin'] : 0; // Ensure is_admin is 0 if not set
+$is_admin = isset($input_data['is_admin']) ? (int)$input_data['is_admin'] : 0;
 
 // Hash the password
 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
@@ -68,6 +116,25 @@ $result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
     http_response_code(409); // Conflict
+    
+    // Log duplicate entry attempt
+    logUserAction(
+        $_SESSION['emp_id'],
+        $_SESSION['user'],
+        'duplicate_entry',
+        "Attempt to add employee with existing email or mobile number",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        json_encode([
+            'email' => $email,
+            'mobile_number' => $mobile_number
+        ]),
+        409,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
     echo json_encode([
         'status' => 'error',
         'message' => 'Email or Mobile Number already exists',
@@ -82,6 +149,25 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param("ssssssi", $emp_id, $emp_name, $email, $mobile_number, $designation, $hashed_password, $is_admin);
 
 if ($stmt->execute()) {
+    // Log successful employee addition
+    logUserAction(
+        $_SESSION['emp_id'],
+        $_SESSION['user'],
+        'employee_added',
+        "Successfully added new employee",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        json_encode([
+            'emp_id' => $emp_id,
+            'emp_name' => $emp_name,
+            'is_admin' => $is_admin
+        ]),
+        200,
+        $emp_id,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
     echo json_encode([
         'status' => 'success',
         'message' => 'Employee added successfully',
@@ -96,6 +182,22 @@ if ($stmt->execute()) {
     ]);
 } else {
     http_response_code(500);
+    
+    // Log database error
+    logUserAction(
+        $_SESSION['emp_id'],
+        $_SESSION['user'],
+        'database_error',
+        "Failed to add employee: " . $stmt->error,
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        json_encode($input_data),
+        500,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
     echo json_encode([
         'status' => 'error',
         'message' => $stmt->error,
@@ -104,4 +206,5 @@ if ($stmt->execute()) {
 }
 
 $stmt->close();
+$conn->close();
 ?>
