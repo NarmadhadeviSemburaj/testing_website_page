@@ -34,39 +34,35 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        
-		html, body {
+        html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            background-color: #f0f0f0; /* Light Grey Background */
-            overflow: hidden; /* Prevents unwanted scrolling */
+            background-color: #f0f0f0;
+            overflow: hidden;
         }
 
-        /* Wrapper to hold both sidebar and content */
         .wrapper {
             display: flex;
-            height: 100vh; /* Full viewport height */
+            height: 100vh;
             padding: 20px;
         }
 
-        /* Sidebar: Fixed, No Scrolling */
         .sidebar-container {
             width: 200px;
-            height: 100vh; /* Fixed height */
-            background-color: #fff; /* Sidebar color */
+            height: 100vh;
+            background-color: #fff;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
             margin-right: 20px;
-            overflow: hidden; /* Prevents sidebar scrolling */
-            position: fixed; /* Keeps sidebar fixed */
-            left: 20px; /* Keeps margin spacing */
-            top: 20px; /* Keeps margin spacing */
+            overflow: hidden;
+            position: fixed;
+            left: 20px;
+            top: 20px;
             bottom: 20px;
         }
 
-        /* Sidebar Links */
         .sidebar a {
             display: block;
             padding: 10px;
@@ -82,24 +78,23 @@ $current_page = basename($_SERVER['PHP_SELF']);
             color: #fff;
         }
         .sidebar a i {
-            margin-right: 10px; /* Adjust spacing */
+            margin-right: 10px;
         }
 
-        /* Content Container: Scrollable */
         .content-container {
             flex: 1;
             background-color: #fff;
             border-radius: 10px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            height: 100vh; /* Fixed height */
-            margin-left: 220px; /* Offset for the fixed sidebar */
-            overflow-y: auto; /* Enables scrolling */
+            height: 100vh;
+            margin-left: 220px;
+            overflow-y: auto;
         }
 
         .admin-section h4 {
-            font-size: 16px; /* Match this to the sidebar links' font size */
-            cursor: pointer; /* Indicates it's clickable */
+            font-size: 16px;
+            cursor: pointer;
         }
         .admin-section {
             margin-top: 20px;
@@ -107,7 +102,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
             border-top: 1px solid #ddd;
         }
 
-        /* User Info */
         .user-info {
             text-align: center;
             margin-bottom: 20px;
@@ -124,85 +118,96 @@ $current_page = basename($_SERVER['PHP_SELF']);
             color: #333;
         }
         .admin-links {
-            display: none; /* Initially hidden */
+            display: none;
         }
 
-        /* Card styling */
+        /* Updated Card Styling */
         .bug-card {
-            border: 1px solid #ddd;
+            border: 1px solid #e0e0e0;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             margin-bottom: 20px;
             transition: transform 0.2s, box-shadow 0.2s;
             background-color: #fff;
-            padding: 15px;
+            padding: 20px;
         }
 
         .bug-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
         }
 
         .bug-card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
         }
 
         .bug-card-header h5 {
             margin: 0;
-            font-size: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
         }
 
-        .bug-type {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 15px;
+        .badge {
             font-size: 12px;
-            font-weight: bold;
-            color: white;
-        }
-
-        .bug-type-critical {
-            background-color: #dc3545; /* Red */
-        }
-
-        .bug-type-high {
-            background-color: #fd7e14; /* Orange */
-        }
-
-        .bug-type-low {
-            background-color: #ffc107; /* Yellow */
-            color: #212529;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 20px;
         }
 
         .bug-card-body {
             margin-bottom: 10px;
         }
 
+        /* Two-column layout for compact fields */
+        .bug-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
         .bug-info {
-            margin-bottom: 10px;
+            margin-bottom: 0;
         }
 
         .bug-info label {
-            font-weight: bold;
-            margin-bottom: 3px;
+            font-weight: 600;
+            margin-bottom: 5px;
             display: block;
             color: #555;
+            font-size: 13px;
         }
 
         .bug-info p {
             margin: 0;
             overflow-wrap: break-word;
+            color: #333;
+            font-size: 14px;
         }
 
+        .bug-info i {
+            color: #007bff;
+            margin-right: 5px;
+            width: 16px;
+            text-align: center;
+        }
+
+        /* Expandable section styling */
         .expandable-section {
-            display: none; /* Hidden by default */
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #e0e0e0;
         }
 
         .expandable-section.expanded {
-            display: block; /* Show when expanded */
+            display: block;
         }
 
         .view-more-btn {
@@ -210,82 +215,81 @@ $current_page = basename($_SERVER['PHP_SELF']);
             cursor: pointer;
             text-align: center;
             margin-top: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
         }
 
         .view-more-btn:hover {
             text-decoration: underline;
         }
 
+        .view-more-btn i {
+            margin-left: 5px;
+            transition: transform 0.2s;
+        }
+
+        .view-more-btn.expanded i {
+            transform: rotate(180deg);
+        }
+
+        /* Attachment styling */
         .attachment-preview {
             max-width: 100%;
             height: auto;
             border-radius: 5px;
             margin-top: 10px;
             max-height: 150px;
+            border: 1px solid #e0e0e0;
         }
 
-        .filter-row {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-            margin-bottom: 20px;
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            margin-top: 20px;
         }
 
-        .filter-row .form-group {
-            flex: 1;
+        .empty-state i {
+            font-size: 48px;
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+
+        .empty-state h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #666;
             margin-bottom: 0;
         }
 
-        .filter-row label {
-            font-size: 14px;
-        }
-
-        .clear-bugs-btn {
-            margin-bottom: 20px;
-            text-align: right;
-        }
-
-        /* Blue icons */
-        .bug-info i {
-            color: #007bff;
-        }
-
-        /* View attachment button */
-        .view-attachment-btn {
-            display: inline-block;
-            padding: 5px 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            color: #007bff;
-            text-decoration: none;
-            transition: all 0.2s;
-            font-size: 14px;
-        }
-
-        .view-attachment-btn:hover {
-            background-color: #e9ecef;
-        }
-
-        /* For two columns inside card */
-        .bug-card-columns {
-            display: flex;
-            flex-wrap: wrap;
-            margin: 0 -10px;
-        }
-
-        .bug-card-column {
-            flex: 1;
-            min-width: 250px;
-            padding: 0 10px;
-        }
-
-        /* Move "Mark as Cleared" button to the right */
-        .bug-card-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .bug-info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .content-container {
+                margin-left: 0;
+                padding-top: 80px;
+            }
+            
+            .sidebar-container {
+                width: 100%;
+                height: auto;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1000;
+                margin-right: 0;
+                border-radius: 0;
+            }
         }
     </style>
 </head>
@@ -348,51 +352,66 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </div>
 
             <!-- Empty state message when no cleared bugs are found -->
-            <div id="emptyState" class="text-center py-5" style="display:none;">
-                <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
-                <h4 class="mt-3">No Cleared Bugs Found</h4>
-                <p class="text-muted">No bugs have been marked as cleared yet.</p>
+            <div id="emptyState" class="empty-state" style="display:none;">
+                <i class="fas fa-check-circle"></i>
+                <h4>No Cleared Bugs Found</h4>
+                <p>No bugs have been marked as cleared yet.</p>
             </div>
         </div>
-		<!-- Session Timeout Popup -->
-	<div id="sessionPopup" class="modal fade" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Session Expiring Soon</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Your session will expire in 2 minutes. Please save your work.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+        
+        <!-- Session Timeout Popup -->
+        <div id="sessionPopup" class="modal fade" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Session Expiring Soon</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Your session will expire in 2 minutes. Please save your work.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+        
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         <script>
-			// Session timeout in milliseconds (5 minutes)
-        const sessionTimeout = 5 * 60 * 1000; // 5 minutes in milliseconds
+            // Session timeout in milliseconds (5 minutes)
+            const sessionTimeout = 5 * 60 * 1000;
+            const popupTime = 2 * 60 * 1000;
 
-        // Time before showing the popup (2 minutes before timeout)
-        const popupTime = 2 * 60 * 1000; // 2 minutes in milliseconds
+            setTimeout(() => {
+                const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
+                sessionPopup.show();
+            }, sessionTimeout - popupTime);
 
-        // Show the session timeout popup
-        setTimeout(() => {
-            const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
-            sessionPopup.show();
-        }, sessionTimeout - popupTime);
+            setTimeout(() => {
+                window.location.href = 'logout.php';
+            }, sessionTimeout);
 
-        // Logout the user after session timeout
-        setTimeout(() => {
-            window.location.href = 'logout.php';
-        }, sessionTimeout);
-            // Toggle admin links visibility
             function toggleAdminLinks() {
                 const adminLinks = document.querySelector('.admin-links');
                 adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
+            }
+
+            // Function to handle view more/less toggle
+            function toggleBugDetails(btn) {
+                const card = btn.closest('.bug-card');
+                const expandableSection = card.querySelector('.expandable-section');
+                const icon = btn.querySelector('i');
+                
+                expandableSection.classList.toggle('expanded');
+                btn.classList.toggle('expanded');
+                
+                // Update button text
+                if (expandableSection.classList.contains('expanded')) {
+                    btn.innerHTML = '<i class="fas fa-chevron-up"></i> View Less';
+                } else {
+                    btn.innerHTML = '<i class="fas fa-chevron-down"></i> View More';
+                }
             }
 
             // Fetch cleared bugs from the API
@@ -407,6 +426,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             clearedBugsContainer.innerHTML = ''; // Clear existing content
 
                             data.data.forEach(bug => {
+                                // Format the cleared_at date
+                                const clearedDate = new Date(bug.cleared_at);
+                                const formattedDate = clearedDate.toLocaleString();
+                                
                                 const bugCard = `
                                     <div class="col-md-6 col-lg-4">
                                         <div class="bug-card">
@@ -415,32 +438,58 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                                 <span class="badge bg-success">Cleared</span>
                                             </div>
                                             <div class="bug-card-body">
-                                                <div class="bug-info">
-                                                    <label><i class="fas fa-align-left"></i> Description</label>
-                                                    <p>${bug.description}</p>
+                                                <div class="bug-info-grid">
+                                                    <div class="bug-info">
+                                                        <label><i class="fas fa-tag"></i> Product</label>
+                                                        <p>${bug.Product_name}</p>
+                                                    </div>
+                                                    <div class="bug-info">
+                                                        <label><i class="fas fa-code-branch"></i> Version</label>
+                                                        <p>${bug.Version}</p>
+                                                    </div>
+                                                    <div class="bug-info">
+                                                        <label><i class="fas fa-mobile-alt"></i> Device</label>
+                                                        <p>${bug.device_name}</p>
+                                                    </div>
+                                                    <div class="bug-info">
+                                                        <label><i class="fab fa-android"></i> Android Version</label>
+                                                        <p>${bug.android_version}</p>
+                                                    </div>
+                                                    <div class="bug-info">
+                                                        <label><i class="fas fa-user"></i> Cleared By</label>
+                                                        <p>${bug.cleared_by}</p>
+                                                    </div>
+                                                    <div class="bug-info">
+                                                        <label><i class="far fa-calendar-alt"></i> Cleared At</label>
+                                                        <p>${formattedDate}</p>
+                                                    </div>
                                                 </div>
-                                                <div class="bug-info">
-                                                    <label><i class="fas fa-list-ol"></i> Test Steps</label>
-                                                    <p>${bug.test_steps}</p>
+                                                
+                                                <div class="expandable-section">
+                                                    <div class="bug-info">
+                                                        <label><i class="fas fa-list-ol"></i> Test Steps</label>
+                                                        <p>${bug.test_steps}</p>
+                                                    </div>
+                                                    <div class="bug-info">
+                                                        <label><i class="fas fa-check-circle"></i> Expected Result</label>
+                                                        <p>${bug.expected_results}</p>
+                                                    </div>
+                                                    <div class="bug-info">
+                                                        <label><i class="fas fa-times-circle"></i> Actual Result</label>
+                                                        <p>${bug.actual_result}</p>
+                                                    </div>
+                                                    ${bug.attachment ? `
+                                                    <div class="bug-info">
+                                                        <label><i class="fas fa-paperclip"></i> Attachment</label>
+                                                        <img src="${bug.attachment}" class="attachment-preview" alt="Bug Attachment">
+                                                    </div>` : ''}
                                                 </div>
-                                                <div class="bug-info">
-                                                    <label><i class="fas fa-check-circle"></i> Expected Result</label>
-                                                    <p>${bug.expected_results}</p>
+                                                
+                                                <div class="text-center">
+                                                    <span class="view-more-btn" onclick="toggleBugDetails(this)">
+                                                        <i class="fas fa-chevron-down"></i> View More
+                                                    </span>
                                                 </div>
-                                                <div class="bug-info">
-                                                    <label><i class="fas fa-times-circle"></i> Actual Result</label>
-                                                    <p>${bug.actual_result}</p>
-                                                </div>
-                                                <div class="bug-info">
-                                                    <label><i class="fas fa-user"></i> Cleared By</label>
-                                                    <p>${bug.cleared_by}</p>
-                                                </div>
-                                                <div class="bug-info">
-                                                    <label><i class="far fa-calendar-alt"></i> Cleared At</label>
-                                                    <p>${bug.result_changed_at}</p>
-                                                </div>
-
-												
                                             </div>
                                         </div>
                                     </div>
@@ -448,10 +497,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                 clearedBugsContainer.insertAdjacentHTML('beforeend', bugCard);
                             });
 
-                            emptyState.style.display = 'none'; // Hide empty state
+                            emptyState.style.display = 'none';
                         } else {
-                            clearedBugsContainer.innerHTML = ''; // Clear existing content
-                            emptyState.style.display = 'block'; // Show empty state
+                            clearedBugsContainer.innerHTML = '';
+                            emptyState.style.display = 'block';
                         }
                     })
                     .catch(error => {
@@ -465,4 +514,3 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </script>
     </body>
 </html>
-        

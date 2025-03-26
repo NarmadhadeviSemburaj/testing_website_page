@@ -1,11 +1,27 @@
 <?php
 session_start();
+include 'log_api.php'; // Include your logging library
 
 // Ensure only logged-in users can access
 if (!isset($_SESSION['user'])) {
     header("Location: index.php");
     exit();
 }
+
+// Log page access
+logUserAction(
+    $_SESSION['emp_id'] ?? null,
+    $_SESSION['user'],
+    'page_access',
+    "Accessed summary page",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
 
 // Define the current page
 $current_page = basename($_SERVER['PHP_SELF']);
@@ -16,36 +32,70 @@ $username = "root";
 $password = "";
 $dbname = "testing_db";
 
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-$sql = "SELECT 
-            DATE(tested_at) as date,
-            COUNT(id) AS total_tests,
-            SUM(CASE WHEN testing_result = 'Pass' THEN 1 ELSE 0 END) AS passed,
-            SUM(CASE WHEN testing_result = 'Fail' THEN 1 ELSE 0 END) AS failed,
-            SUM(CASE WHEN bug_type = 'Critical' THEN 1 ELSE 0 END) AS critical_bugs,
-            SUM(CASE WHEN bug_type = 'High' THEN 1 ELSE 0 END) AS high_bugs,
-            SUM(CASE WHEN bug_type = 'Low' THEN 1 ELSE 0 END) AS low_bugs,
-            SUM(CASE WHEN testing_result = 'Fail' THEN 1 ELSE 0 END) AS fixes_done
-        FROM testcase
-        GROUP BY DATE(tested_at)
-        ORDER BY DATE(tested_at) DESC
-        LIMIT 3";
-
-$result = $conn->query($sql);
-$testing_summary = [];
-
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $testing_summary[] = $row;
+try {
+    $conn = new mysqli($servername, $username, $password, $dbname);
+    
+    if ($conn->connect_error) {
+        throw new Exception("Connection failed: " . $conn->connect_error);
     }
-}
 
-$conn->close();
+    $sql = "SELECT 
+                DATE(tested_at) as date,
+                COUNT(id) AS total_tests,
+                SUM(CASE WHEN testing_result = 'Pass' THEN 1 ELSE 0 END) AS passed,
+                SUM(CASE WHEN testing_result = 'Fail' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN bug_type = 'Critical' THEN 1 ELSE 0 END) AS critical_bugs,
+                SUM(CASE WHEN bug_type = 'High' THEN 1 ELSE 0 END) AS high_bugs,
+                SUM(CASE WHEN bug_type = 'Low' THEN 1 ELSE 0 END) AS low_bugs,
+                SUM(CASE WHEN testing_result = 'Fail' THEN 1 ELSE 0 END) AS fixes_done
+            FROM testcase
+            GROUP BY DATE(tested_at)
+            ORDER BY DATE(tested_at) DESC
+            LIMIT 3";
+
+    $result = $conn->query($sql);
+    $testing_summary = [];
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $testing_summary[] = $row;
+        }
+    }
+    
+    // Log successful data fetch
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'],
+        'data_fetch',
+        "Fetched testing summary data",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        200,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    $conn->close();
+} catch (Exception $e) {
+    // Log database error
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'],
+        'database_error',
+        "Database error: " . $e->getMessage(),
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        500,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    die("Error: " . $e->getMessage());
+}
 ?>
 
 <!DOCTYPE html>
@@ -62,34 +112,31 @@ $conn->close();
             height: 100%;
             margin: 0;
             padding: 0;
-            background-color: #f0f0f0; /* Light Grey Background */
-            overflow: hidden; /* Prevents unwanted scrolling */
+            background-color: #f0f0f0;
+            overflow: hidden;
         }
 
-        /* Wrapper to hold both sidebar and content */
         .wrapper {
             display: flex;
-            height: 100vh; /* Full viewport height */
+            height: 100vh;
             padding: 20px;
         }
 
-        /* Sidebar: Fixed, No Scrolling */
         .sidebar-container {
             width: 200px;
-            height: 100vh; /* Fixed height */
-            background-color: #fff; /* Sidebar color */
+            height: 100vh;
+            background-color: #fff;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
             margin-right: 20px;
-            overflow: hidden; /* Prevents sidebar scrolling */
-            position: fixed; /* Keeps sidebar fixed */
-            left: 20px; /* Keeps margin spacing */
-            top: 20px; /* Keeps margin spacing */
+            overflow: hidden;
+            position: fixed;
+            left: 20px;
+            top: 20px;
             bottom: 20px;
         }
 
-        /* Sidebar Links */
         .sidebar a {
             display: block;
             padding: 10px;
@@ -105,22 +152,20 @@ $conn->close();
             color: #fff;
         }
         .sidebar a i {
-            margin-right: 10px; /* Adjust spacing */
+            margin-right: 10px;
         }
 
-        /* Content Container: Scrollable */
         .content-container {
             flex: 1;
             background-color: #fff;
             border-radius: 10px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            height: 100vh; /* Fixed height */
-            margin-left: 220px; /* Offset for the fixed sidebar */
-            overflow-y: auto; /* Enables scrolling */
+            height: 100vh;
+            margin-left: 220px;
+            overflow-y: auto;
         }
 
-        /* Welcome Message and Start Testing Button */
         .welcome-section {
             display: flex;
             justify-content: space-between;
@@ -144,7 +189,6 @@ $conn->close();
             padding: 10px 20px;
         }
 
-        /* MIS Testing Summary Table */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -161,7 +205,6 @@ $conn->close();
             background-color: #f4f4f4;
         }
 
-        /* Admin Section */
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
@@ -174,7 +217,7 @@ $conn->close();
         }
 
         .admin-links {
-            display: none; /* Initially hidden */
+            display: none;
         }
 
         .user-info {
@@ -191,6 +234,39 @@ $conn->close();
             font-size: 16px;
             margin: 5px 0 0;
             color: #333;
+        }
+        
+        /* Log viewer styles */
+        .log-viewer {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .log-table th, .log-table td {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            text-align: left;
+        }
+        
+        .log-table th {
+            background-color: #e9ecef;
+        }
+        
+        .log-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .log-table tr:hover {
+            background-color: #e9ecef;
         }
     </style>
 </head>
@@ -227,6 +303,9 @@ $conn->close();
                         </a>
                         <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
                             <i class="fas fa-list-alt"></i> TCM
+                        </a>
+                        <a href="#" onclick="toggleLogViewer(); return false;">
+                            <i class="fas fa-clipboard-list"></i> View Logs
                         </a>
                     </div>
                 </div>
@@ -281,6 +360,32 @@ $conn->close();
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            
+            <!-- Admin-only log viewer -->
+            <?php if ($_SESSION['is_admin']): ?>
+                <div id="logViewer" class="log-viewer">
+                    <h5>System Logs</h5>
+                    <button class="btn btn-sm btn-primary mb-2" onclick="refreshLogs()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                    <div class="table-responsive">
+                        <table class="log-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Endpoint</th>
+                                    <th>IP Address</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logTableBody">
+                                <!-- Logs will be loaded here via AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -290,6 +395,70 @@ $conn->close();
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
         }
+        
+        // Function to toggle log viewer visibility (admin only)
+        function toggleLogViewer() {
+            const logViewer = document.getElementById('logViewer');
+            logViewer.style.display = logViewer.style.display === 'block' ? 'none' : 'block';
+            
+            // Load logs if showing
+            if (logViewer.style.display === 'block') {
+                refreshLogs();
+            }
+        }
+        
+        // Function to refresh logs via AJAX
+        function refreshLogs() {
+            $.ajax({
+                url: 'get_logs.php',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    if (data.status === 'success') {
+                        const tbody = $('#logTableBody');
+                        tbody.empty();
+                        
+                        data.logs.forEach(log => {
+                            const row = `
+                                <tr>
+                                    <td>${log.created_at}</td>
+                                    <td>${log.username}</td>
+                                    <td>${log.action_type}</td>
+                                    <td>${log.endpoint}</td>
+                                    <td>${log.ip_address}</td>
+                                </tr>
+                            `;
+                            tbody.append(row);
+                        });
+                    } else {
+                        alert('Error loading logs: ' + data.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading logs:', error);
+                    alert('Failed to load logs. Check console for details.');
+                }
+            });
+        }
+        
+        // Log important client-side actions
+        function logClientAction(actionType, description) {
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: actionType,
+                    description: description
+                },
+                dataType: 'json'
+            });
+        }
+        
+        // Log initial page load
+        $(document).ready(function() {
+            logClientAction('page_load', 'Loaded summary page');
+        });
     </script>
 </body>
 </html>

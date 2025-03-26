@@ -11,7 +11,7 @@ include 'db_config.php';
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $sql = "SELECT * FROM testcase WHERE cleared_flag = 1";
+    $sql = "SELECT * FROM bug WHERE cleared_flag = 1";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {

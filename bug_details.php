@@ -1,19 +1,16 @@
 <?php
-session_start(); // Start the session
+session_start();
 // Set session timeout to 5 minutes (300 seconds)
-$timeout = 300; // 5 minutes in seconds
+$timeout = 300;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
-    // Last request was more than 5 minutes ago
-    session_unset();     // Unset $_SESSION variable for this page
-    session_destroy();   // Destroy session data
+    session_unset();
+    session_destroy();
     header("Location: index.php");
     exit();
 }
-$_SESSION['last_activity'] = time(); // Update last activity time stamp
+$_SESSION['last_activity'] = time();
 
 include 'db_config.php';
-
-// Define the current page
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <!DOCTYPE html>
@@ -27,8 +24,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Your existing CSS styles */
-        html, body {
+		html, body {
             height: 100%;
             margin: 0;
             padding: 0;
@@ -130,7 +126,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
             padding: 15px;
             display: flex;
             flex-direction: column;
-            height: auto; /* Allow height to adjust */
+            height: 100%; /* Make all cards the same height */
+            min-height: 400px; /* Set a minimum height */
         }
 
         .bug-card-header {
@@ -191,6 +188,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         .expandable-section {
             display: none; /* Hidden by default */
+            margin-top: auto; /* Push to bottom */
         }
 
         .expandable-section.expanded {
@@ -277,23 +275,28 @@ $current_page = basename($_SERVER['PHP_SELF']);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 10px;
+            margin-top: auto; /* Push to bottom */
+            padding-top: 10px;
+        }
+        
+        /* Empty state styling */
+        .empty-state {
+            text-align: center;
+            padding: 40px 0;
         }
     </style>
 </head>
 <body>
     <div class="wrapper">
-        <!-- Sidebar -->
+        <!-- Sidebar (unchanged from your original) -->
         <div class="sidebar-container">
-            <!-- User Info Section -->
             <div class="user-info">
                 <i class="fas fa-user"></i>
                 <h4><?php echo htmlspecialchars($_SESSION['user']); ?></h4>
             </div>
-
-            <!-- Sidebar Menu -->
             <div class="sidebar">
-                <a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
+                <!-- Your original sidebar links -->
+				<a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
                 <a href="update_tc3.php" class="<?php echo ($current_page == 'update_tc3.php') ? 'active' : ''; ?>">
@@ -305,7 +308,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <a href="logout.php" class="text-danger <?php echo ($current_page == 'logout.php') ? 'active' : ''; ?>">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
-
                 <?php if ($_SESSION['is_admin']): ?>
                     <div class="admin-section">
                         <h4 onclick="toggleAdminLinks()"><i class="fas fa-cogs"></i> Admin <i class="fas fa-chevron-down"></i></h4>
@@ -328,14 +330,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <!-- Main Content -->
         <div class="content-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4>Bug Reports</h4> 
-                <!-- Moved to top - View Cleared Bugs button -->
+                <h4>Bug Reports</h4>
                 <a href="cleared_bugs7.php" class="btn btn-success">
                     <i class="fas fa-history"></i> View Cleared Bugs
                 </a>
             </div>
-
-            <!-- Filter Section -->
+			            <!-- Filter Section -->
             <div class="filter-row">
                 <div class="form-group">
                     <label for="filterProduct">Product:</label>
@@ -395,79 +395,70 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
                 if ($result->num_rows > 0) {
                     while ($row = $result->fetch_assoc()) {
-                        // Determine bug type class for styling
                         $bugTypeClass = '';
                         switch ($row['bug_type']) {
-                            case 'Critical':
-                                $bugTypeClass = 'bug-type-critical';
-                                break;
-                            case 'High':
-                                $bugTypeClass = 'bug-type-high';
-                                break;
-                            case 'Low':
-                                $bugTypeClass = 'bug-type-low';
-                                break;
-                            default:
-                                $bugTypeClass = '';
+                            case 'Critical': $bugTypeClass = 'bug-type-critical'; break;
+                            case 'High': $bugTypeClass = 'bug-type-high'; break;
+                            case 'Low': $bugTypeClass = 'bug-type-low'; break;
                         }
-                ?>
+                        ?>
                         <div class="col-md-6 col-lg-4 bug-card-col" 
-                             data-product="<?= htmlspecialchars($row['Product_name']); ?>" 
-                             data-version="<?= htmlspecialchars($row['Version']); ?>" 
-                             data-bug-type="<?= htmlspecialchars($row['bug_type']); ?>">
-                            <div class="bug-card" id="card_<?= $row['id']; ?>">
+                             data-product="<?= htmlspecialchars($row['Product_name']) ?>" 
+                             data-version="<?= htmlspecialchars($row['Version']) ?>" 
+                             data-bug-type="<?= htmlspecialchars($row['bug_type']) ?>">
+                            <div class="bug-card" id="card_<?= $row['id'] ?>" data-testcase-id="<?= $row['testcase_id'] ?>">
                                 <div class="bug-card-header">
-                                    <h5><?= htmlspecialchars($row['Module_name']); ?></h5>
-                                    <span class="bug-type <?= $bugTypeClass; ?>"><?= htmlspecialchars($row['bug_type']); ?></span>
+                                    <h5><?= htmlspecialchars($row['Module_name']) ?></h5>
+                                    <span class="bug-type <?= $bugTypeClass ?>"><?= htmlspecialchars($row['bug_type']) ?></span>
                                 </div>
                                 <div class="bug-card-body">
-                                    <!-- Default visible content -->
+                                    <!-- All your original card content preserved -->
                                     <div class="bug-info">
                                         <label><i class="fas fa-align-left"></i> Description</label>
-                                        <p><?= htmlspecialchars($row['description']); ?></p>
+                                        <p><?= htmlspecialchars($row['description']) ?></p>
                                     </div>
                                     <div class="bug-info">
                                         <label><i class="fas fa-list-ol"></i> Test Steps</label>
-                                        <p><?= htmlspecialchars($row['test_steps']); ?></p>
+                                        <p><?= htmlspecialchars($row['test_steps']) ?></p>
                                     </div>
                                     <div class="bug-info">
                                         <label><i class="fas fa-check-circle"></i> Expected Result</label>
-                                        <p><?= htmlspecialchars($row['expected_results']); ?></p>
+                                        <p><?= htmlspecialchars($row['expected_results']) ?></p>
                                     </div>
                                     <div class="bug-info">
                                         <label><i class="fas fa-times-circle"></i> Actual Result</label>
-                                        <p><?= htmlspecialchars($row['actual_result']); ?></p>
+                                        <p><?= htmlspecialchars($row['actual_result']) ?></p>
                                     </div>
 
-                                    <!-- Expandable section with two-column layout -->
-                                    <div class="expandable-section" id="expandable_<?= $row['id']; ?>">
+                                    <!-- Expandable section -->
+                                    <div class="expandable-section" id="expandable_<?= $row['id'] ?>">
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <div class="bug-info">
                                                     <label><i class="fas fa-tag"></i> Product</label>
-                                                    <p><?= htmlspecialchars($row['Product_name']); ?></p>
+                                                    <p><?= htmlspecialchars($row['Product_name']) ?></p>
                                                 </div>
                                                 <div class="bug-info">
                                                     <label><i class="fas fa-mobile-alt"></i> Device</label>
-                                                    <p><?= htmlspecialchars($row['device_name']); ?></p>
+                                                    <p><?= htmlspecialchars($row['device_name']) ?></p>
                                                 </div>
                                                 <div class="bug-info">
                                                     <label><i class="fab fa-android"></i> Android Version</label>
-                                                    <p><?= htmlspecialchars($row['android_version']); ?></p>
+                                                    <p><?= htmlspecialchars($row['android_version']) ?></p>
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="bug-info">
                                                     <label><i class="fas fa-code-branch"></i> Version</label>
-                                                    <p><?= htmlspecialchars($row['Version']); ?></p>
+                                                    <p><?= htmlspecialchars($row['Version']) ?></p>
                                                 </div>
                                                 <div class="bug-info">
                                                     <label><i class="fas fa-user"></i> Tested By</label>
-                                                    <p><?= htmlspecialchars($row['tested_by_name']); ?></p>
+                                                    <p><?= htmlspecialchars($row['tested_by_name']) ?></p>
                                                 </div>
                                                 <div class="bug-info">
                                                     <label><i class="far fa-calendar-alt"></i> Tested At</label>
-                                                    <p><?= date('Y-m-d H:i', strtotime($row['tested_at'])); ?></p>
+                                                    <p><?= date('Y-m-d H:i', strtotime($row['tested_at'])) ?></p>
                                                 </div>
                                             </div>
                                         </div>
@@ -478,21 +469,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                                 $file_url = htmlspecialchars($row['file_attachment'], ENT_QUOTES, 'UTF-8');
                                                 $file_extension = strtolower(pathinfo($file_url, PATHINFO_EXTENSION));
                                                 
-                                                $image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                                                $video_extensions = ['mp4', 'webm', 'ogg'];
-                                                
-                                                if (in_array($file_extension, $image_extensions)) {
-                                                    echo '<a href="' . $file_url . '" class="view-attachment-btn" target="_blank">
-                                                            <i class="fas fa-eye"></i> View Image
-                                                          </a>';
-                                                } elseif (in_array($file_extension, $video_extensions)) {
-                                                    echo '<a href="' . $file_url . '" class="view-attachment-btn" target="_blank">
-                                                            <i class="fas fa-play"></i> View Video
-                                                          </a>';
+                                                if (in_array($file_extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                                                    echo '<a href="'.$file_url.'" class="view-attachment-btn" target="_blank"><i class="fas fa-eye"></i> View Image</a>';
+                                                } elseif (in_array($file_extension, ['mp4', 'webm', 'ogg'])) {
+                                                    echo '<a href="'.$file_url.'" class="view-attachment-btn" target="_blank"><i class="fas fa-play"></i> View Video</a>';
                                                 } else {
-                                                    echo '<a href="' . $file_url . '" class="view-attachment-btn" target="_blank">
-                                                            <i class="fas fa-file"></i> View File
-                                                          </a>';
+                                                    echo '<a href="'.$file_url.'" class="view-attachment-btn" target="_blank"><i class="fas fa-file"></i> View File</a>';
                                                 }
                                                 ?>
                                             </div>
@@ -501,19 +483,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
                                     <!-- View More Button and Mark as Cleared Button -->
                                     <div class="bug-card-footer">
-                                        <div class="view-more-btn" onclick="toggleExpandableSection(<?= $row['id']; ?>)">
+                                        <div class="view-more-btn" onclick="toggleExpandableSection('<?= $row['id'] ?>')">
                                             View More <i class="fas fa-chevron-down"></i>
                                         </div>
-                                        <button class="btn btn-danger clear-btn" data-id="<?= $row['id']; ?>">
+                                        <button class="btn btn-danger clear-btn" data-id="<?= $row['id'] ?>">
                                             <i class="fas fa-check-circle"></i> Mark as Cleared
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    <?php }
+                        <?php
+                    }
                 } else {
-                    echo '<div class="col-12 text-center py-5">
+                    echo '<div class="col-12 empty-state">
                             <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
                             <h4 class="mt-3">No Open Bug Reports</h4>
                             <p class="text-muted">All bugs have been cleared.</p>
@@ -526,83 +509,135 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Toggle admin links visibility
-        function toggleAdminLinks() {
+        // Toggle expandable section
+        function toggleExpandableSection(id) {
+            const section = document.getElementById('expandable_' + id);
+            const btn = section.closest('.bug-card-body').querySelector('.view-more-btn');
+            
+            section.classList.toggle('expanded');
+            if (section.classList.contains('expanded')) {
+                btn.innerHTML = 'View Less <i class="fas fa-chevron-up"></i>';
+            } else {
+                btn.innerHTML = 'View More <i class="fas fa-chevron-down"></i>';
+            }
+        }
+		function toggleAdminLinks() {
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
         }
 
-        // Toggle expandable section - FIXED VERSION
-        function toggleExpandableSection(id) {
-            const expandableSection = document.getElementById('expandable_' + id);
-            const viewMoreBtn = expandableSection.closest('.bug-card-body').querySelector('.view-more-btn');
-
-            if (expandableSection.classList.contains('expanded')) {
-                expandableSection.classList.remove('expanded');
-                viewMoreBtn.innerHTML = 'View More <i class="fas fa-chevron-down"></i>';
-            } else {
-                expandableSection.classList.add('expanded');
-                viewMoreBtn.innerHTML = 'View Less <i class="fas fa-chevron-up"></i>';
+        // Handle clear button
+        $(document).on('click', '.clear-btn', function() {
+            const bugId = $(this).data('id');
+            const testcaseId = $(this).closest('.bug-card').data('testcase-id');
+            
+            if (!bugId) {
+                alert('Error: Bug ID is missing');
+                return;
             }
-        }
+
+            if (confirm("Are you sure you want to mark this bug as cleared?")) {
+                $.ajax({
+                    url: 'bug_reports_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'clear_bug',
+                        id: bugId,
+                        testcase_id: testcaseId
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.status === 'success') {
+                            const card = $('#card_' + bugId);
+                            card.css({
+                                'opacity': '0',
+                                'transform': 'scale(0.9)',
+                                'transition': 'all 0.3s ease'
+                            });
+                            
+                            setTimeout(() => {
+                                card.closest('.bug-card-col').remove();
+                                
+                                // Show empty state if no bugs left
+                                if ($('.bug-card-col').length === 0) {
+                                    $('#bugCardsContainer').html(`
+                                        <div class="col-12 empty-state">
+                                            <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
+                                            <h4 class="mt-3">No Open Bug Reports</h4>
+                                            <p class="text-muted">All bugs have been cleared.</p>
+                                        </div>
+                                    `);
+                                }
+                            }, 300);
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        alert('An error occurred. Please try again.');
+                        console.error(error);
+                    }
+                });
+            }
+        });
 
         // Filter functionality
-        document.addEventListener('DOMContentLoaded', function() {
+        $(document).ready(function() {
             // Handle clear button clicks
-            document.querySelectorAll('.clear-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const bugId = this.getAttribute('data-id');
-                    
-                    if (confirm("Are you sure you want to mark this bug as cleared?")) {
-                        // Send Ajax request to bug_report_api.php
-                        fetch('bug_reports_api.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ id: bugId }),
-                        })
-                        .then(response => response.json())
-                        .then(data => {
+            $(document).on('click', '.clear-btn', function() {
+                const bugId = $(this).data('id');
+                
+                if (confirm("Are you sure you want to mark this bug as cleared?")) {
+                    // Send Ajax request to bug_report_api.php
+                    $.ajax({
+                        url: 'bug_reports_api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'clear_bug',
+                            id: bugId
+                        },
+                        dataType: 'json',
+                        success: function(data) {
                             if (data.status === 'success') {
                                 // Remove the card with animation
-                                const card = document.getElementById('card_' + bugId);
-                                card.style.opacity = '0';
-                                card.style.transform = 'scale(0.8)';
-                                card.style.transition = 'opacity 0.3s, transform 0.3s';
+                                const card = $('#card_' + bugId);
+                                card.css({
+                                    'opacity': '0',
+                                    'transform': 'scale(0.8)',
+                                    'transition': 'opacity 0.3s, transform 0.3s'
+                                });
                                 
                                 setTimeout(() => {
-                                    const cardCol = card.closest('.bug-card-col');
-                                    if (cardCol) {
-                                        cardCol.remove();
-                                        checkEmptyState();
-                                    }
+                                    card.closest('.bug-card-col').remove();
+                                    checkEmptyState();
                                 }, 300);
                             } else {
                                 alert('Error updating bug: ' + data.message);
                             }
-                        })
-                        .catch(error => console.error('Error:', error));
-                    }
-                });
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Error:', error);
+                            alert('An error occurred while clearing the bug.');
+                        }
+                    });
+                }
             });
 
             // Filter functionality
-            const applyFilterBtn = document.getElementById('applyFilter');
-            const resetFilterBtn = document.getElementById('resetFilter');
-
-            applyFilterBtn.addEventListener('click', applyFilters);
-            resetFilterBtn.addEventListener('click', resetFilters);
+            $('#applyFilter').click(applyFilters);
+            $('#resetFilter').click(resetFilters);
 
             function applyFilters() {
-                const productFilter = document.getElementById('filterProduct').value;
-                const versionFilter = document.getElementById('filterVersion').value;
-                const bugTypeFilter = document.getElementById('filterBugType').value;
+                const productFilter = $('#filterProduct').val();
+                const versionFilter = $('#filterVersion').val();
+                const bugTypeFilter = $('#filterBugType').val();
 
-                document.querySelectorAll('.bug-card-col').forEach(card => {
-                    const cardProduct = card.getAttribute('data-product');
-                    const cardVersion = card.getAttribute('data-version');
-                    const cardBugType = card.getAttribute('data-bug-type');
+                let hasVisibleCards = false;
+
+                $('.bug-card-col').each(function() {
+                    const cardProduct = $(this).data('product');
+                    const cardVersion = $(this).data('version');
+                    const cardBugType = $(this).data('bug-type');
 
                     let showCard = true;
 
@@ -618,34 +653,38 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         showCard = false;
                     }
 
-                    card.style.display = showCard ? '' : 'none';
+                    if (showCard) {
+                        $(this).show();
+                        hasVisibleCards = true;
+                    } else {
+                        $(this).hide();
+                    }
                 });
 
                 checkEmptyState();
             }
 
             function resetFilters() {
-                document.getElementById('filterProduct').value = '';
-                document.getElementById('filterVersion').value = '';
-                document.getElementById('filterBugType').value = '';
+                $('#filterProduct').val('');
+                $('#filterVersion').val('');
+                $('#filterBugType').val('');
 
-                document.querySelectorAll('.bug-card-col').forEach(card => {
-                    card.style.display = '';
-                });
+                $('.bug-card-col').show();
 
                 checkEmptyState();
             }
 
             function checkEmptyState() {
-                const visibleCards = document.querySelectorAll('.bug-card-col[style=""]').length + 
-                                     document.querySelectorAll('.bug-card-col:not([style])').length;
-
-                const emptyState = document.getElementById('emptyState');
+                const visibleCards = $('.bug-card-col:visible').length;
+                const emptyState = $('#emptyState');
+                const noBugsMessage = $('.empty-state').not('#emptyState');
 
                 if (visibleCards === 0) {
-                    emptyState.style.display = 'block';
+                    emptyState.show();
+                    if (noBugsMessage.length) noBugsMessage.hide();
                 } else {
-                    emptyState.style.display = 'none';
+                    emptyState.hide();
+                    if (noBugsMessage.length) noBugsMessage.hide();
                 }
             }
 
