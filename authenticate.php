@@ -1,7 +1,7 @@
 <?php
 session_start();
 include 'db_config.php';
-include 'log_api.php'; // Include the logging API
+include 'log_api.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email_or_mobile = trim($_POST['email']);
@@ -34,7 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $row = $result->fetch_assoc();
         $stored_password = $row['password'];
 
-        // ✅ Migrate MD5 Passwords to Bcrypt
+        // Migrate MD5 Passwords to Bcrypt
         if (strlen($stored_password) === 32 && ctype_xdigit($stored_password)) {
             if (md5($password) === $stored_password) {
                 // Convert MD5 to bcrypt
@@ -49,15 +49,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 exit();
             }
         } 
-        // ✅ Verify Bcrypt Password
+        // Verify Bcrypt Password
         elseif (!password_verify($password, $stored_password)) {
             $_SESSION['error'] = "Invalid email/mobile or password.";
             header("Location: index.php");
             exit();
         }
 
-        // ✅ Secure Session Handling
+        // Secure Session Handling
         session_regenerate_id(true); // Prevent session fixation attack
+        
+        // Store all necessary user information in session
+        $_SESSION['emp_id'] = $row['emp_id']; // Store emp_id
         $_SESSION['user'] = $row['emp_name'];
         $_SESSION['is_admin'] = (int)$row['is_admin'] === 1;
         $_SESSION['last_activity'] = time();
@@ -70,7 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             'User logged in successfully', // action_description
             $_SERVER['REQUEST_URI'], // endpoint
             $_SERVER['REQUEST_METHOD'], // http_method
-            $_POST, // request_payload
+            ['email' => $email_or_mobile], // request_payload (don't log password)
             200, // response_status
             ['message' => 'Login successful'], // response_data
             $_SERVER['REMOTE_ADDR'], // ip_address
@@ -80,6 +83,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         header("Location: home.php");
         exit();
     } else {
+        // Log failed login attempt
+        logUserAction(
+            null, // No user_id for failed attempts
+            $email_or_mobile, // Use the attempted email/mobile as username
+            'login_failed', // action_type
+            'Failed login attempt', // action_description
+            $_SERVER['REQUEST_URI'], // endpoint
+            $_SERVER['REQUEST_METHOD'], // http_method
+            ['email' => $email_or_mobile], // request_payload
+            401, // response_status
+            ['message' => 'Invalid credentials'], // response_data
+            $_SERVER['REMOTE_ADDR'], // ip_address
+            $_SERVER['HTTP_USER_AGENT'] // user_agent
+        );
+
         $_SESSION['error'] = "Invalid email/mobile or password.";
         header("Location: index.php");
         exit();
