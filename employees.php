@@ -1,20 +1,85 @@
 <?php
 session_start();
-// Set session timeout to 5 minutes (300 seconds)
-$timeout = 300; // 5 minutes in seconds
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
-    // Last request was more than 5 minutes ago
-    session_unset();     // Unset $_SESSION variable for this page
-    session_destroy();   // Destroy session data
-    header("Location: index.php");
-    exit();
-}
-$_SESSION['last_activity'] = time(); // Update last activity time stamp
+include 'log_api.php';
 
-if (!isset($_SESSION['user'])) {
+// Set session timeout to 5 minutes (300 seconds)
+$timeout = 300;
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'] ?? 'unknown',
+        'session_timeout',
+        "Session timed out due to inactivity",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        401,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    session_unset();
+    session_destroy();
     header("Location: index.php");
     exit();
 }
+$_SESSION['last_activity'] = time();
+
+// Check if user is logged in
+if (!isset($_SESSION['user'])) {
+    logUserAction(
+        null,
+        'unknown',
+        'unauthorized_access',
+        "Attempted to access employees page without login",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    header("Location: index.php");
+    exit();
+}
+
+// Check if user is admin
+if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'],
+        'unauthorized_admin_access',
+        "Non-admin user attempted to access employees page",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    header("Location: summary.php");
+    exit();
+}
+
+// Log successful page access
+logUserAction(
+    $_SESSION['emp_id'],
+    $_SESSION['user'],
+    'page_access',
+    "Accessed employees management page",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
 
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
@@ -29,7 +94,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Your existing CSS styles */
         html, body {
             height: 100%;
             margin: 0;
@@ -162,13 +226,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <div class="wrapper">
         <!-- Sidebar -->
         <div class="sidebar-container">
-            <!-- User Info Section -->
             <div class="user-info">
                 <i class="fas fa-user"></i>
                 <h4><?php echo htmlspecialchars($_SESSION['user']); ?></h4>
             </div>
 
-            <!-- Sidebar Menu -->
             <div class="sidebar">
                 <a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
@@ -195,6 +257,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             </a>
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
                                 <i class="fas fa-list-alt"></i> TCM
+                            </a>
+                            <a href="view_logs.php">
+                                <i class="fas fa-clipboard-list"></i> View Logs
                             </a>
                         </div>
                     </div>
@@ -226,8 +291,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
     </div>
     <a href="add_employees.php" class="btn add-employee-btn">+</a>
-	<!-- Session Timeout Popup -->
-<div id="sessionPopup" class="modal fade" tabindex="-1">
+    
+    <!-- Session Timeout Popup -->
+    <div id="sessionPopup" class="modal fade" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -245,12 +311,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </div>
 
     <script>
-		
-    // Session timeout in milliseconds (5 minutes)
-        const sessionTimeout = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-        // Time before showing the popup (2 minutes before timeout)
-        const popupTime = 2 * 60 * 1000; // 2 minutes in milliseconds
+        // Session timeout in milliseconds (5 minutes)
+        const sessionTimeout = 5 * 60 * 1000;
+        const popupTime = 2 * 60 * 1000;
 
         // Show the session timeout popup
         setTimeout(() => {
@@ -262,31 +325,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
         setTimeout(() => {
             window.location.href = 'logout.php';
         }, sessionTimeout);
-        // Function to toggle the visibility of admin links
+
         function toggleAdminLinks() {
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
         }
 
-        // Function to fetch employees from the API
         function fetchEmployees() {
-            const apiUrl = 'employee.php?action=getEmployees';
-            console.log("Making request to:", apiUrl);
-
+            console.log("Starting to fetch employees...");
+            
             $.ajax({
-                url: apiUrl,
+                url: 'employee.php?action=getEmployees',
                 method: 'GET',
-                dataType: 'json', // Ensure the response is parsed as JSON
+                dataType: 'json',
                 success: function(response) {
                     console.log("API Response:", response);
-
-                    // Check if the response status is 'success'
-                    if (response.status === 'success') {
-                        const employees = response.data; // Access the 'data' field
+                    
+                    if (response && response.status === 'success' && Array.isArray(response.data)) {
                         const tbody = $('#employeesTable tbody');
-                        tbody.empty(); // Clear existing rows
-
-                        employees.forEach(employee => {
+                        tbody.empty();
+                        
+                        if (response.data.length === 0) {
+                            tbody.append('<tr><td colspan="7" class="text-center">No employees found</td></tr>');
+                            return;
+                        }
+                        
+                        response.data.forEach(employee => {
                             const row = `
                                 <tr>
                                     <td>${employee.emp_id}</td>
@@ -297,49 +361,70 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                     <td>${employee.is_admin == 1 ? 'Yes' : 'No'}</td>
                                     <td>
                                         <a href="edit_employees.php?id=${employee.emp_id}" class="btn btn-sm btn-primary">Edit</a>
-                                        <a href="delete_employees.php?id=${employee.emp_id}" 
-                                           class="btn btn-sm btn-danger" 
-                                           onclick="return confirm('Are you sure you want to delete this employee?');">
+                                        <button onclick="deleteEmployee(${employee.emp_id}, '${employee.emp_name.replace(/'/g, "\\'")}')" 
+                                           class="btn btn-sm btn-danger">
                                            Delete
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                             `;
                             tbody.append(row);
                         });
-
-                        console.log("Table updated successfully.");
                     } else {
-                        console.error("API Error:", response.message);
-                        alert("Failed to fetch employees: " + response.message);
+                        console.error("Invalid response format or empty data");
+                        $('#employeesTable tbody').html(`
+                            <tr>
+                                <td colspan="7" class="text-center text-danger">
+                                    ${response.message || 'Invalid data format received from server'}
+                                </td>
+                            </tr>
+                        `);
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error fetching employees:', error);
-                    console.log("Status:", xhr.status);
-                    console.log("Response:", xhr.responseText);
-
-                    // Try to parse the error response for more details
-                    try {
-                        const errorResponse = JSON.parse(xhr.responseText);
-                        console.error("Error details:", errorResponse);
-                        alert("Error: " + errorResponse.message);
-                    } catch (e) {
-                        console.log("Response is not JSON:", xhr.responseText);
-                        alert("An unexpected error occurred.");
-                    }
+                    console.error("AJAX Error:", status, error);
+                    console.log("Full error response:", xhr.responseText);
+                    
+                    $('#employeesTable tbody').html(`
+                        <tr>
+                            <td colspan="7" class="text-center text-danger">
+                                Failed to load employees. Check console for details.
+                            </td>
+                        </tr>
+                    `);
                 }
             });
         }
 
-        // Fetch employees on page load
-        $(document).ready(function() {
-            fetchEmployees();
+        function deleteEmployee(empId, empName) {
+            if (confirm(`Are you sure you want to delete ${empName}?`)) {
+                $.ajax({
+                    url: `employee.php?action=deleteEmployee&id=${empId}`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            alert('Employee deleted successfully');
+                            fetchEmployees(); // Refresh the list
+                        } else {
+                            alert('Error: ' + (response.message || 'Failed to delete employee'));
+                        }
+                    },
+                    error: function() {
+                        alert('Failed to delete employee. Please try again.');
+                    }
+                });
+            }
+        }
 
-            // Set initial state of admin links
+        $(document).ready(function() {
+            // Initialize with hidden admin links
             if (document.querySelector('.admin-section')) {
                 document.querySelector('.admin-links').style.display = 'none';
             }
+            
+            // Load employees initially
+            fetchEmployees();
         });
     </script>
 </body>
