@@ -3,12 +3,12 @@ session_start();
 include 'db_config.php';
 
 // Check if user is logged in and is admin
-if (!isset($_SESSION['user'])) {
+if (!isset($_SESSION['user']) {
     header("Location: index.php");
     exit();
 }
 
-if (!isset($_SESSION['is_admin'])) {
+if (!isset($_SESSION['is_admin']) {
     header("Location: summary.php");
     exit();
 }
@@ -310,7 +310,9 @@ while ($row = $typeResult->fetch_assoc()) {
                 <a href="bug_details.php" class="<?php echo ($current_page == 'bug_details.php') ? 'active' : ''; ?>">
                     <i class="fas fa-bug"></i> Bug Reports
                 </a>
-                
+                <a href="view_logs.php" class="<?php echo ($current_page == 'view_logs.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-clipboard-list"></i> View Logs
+                </a>
                 <a href="logout.php" class="text-danger <?php echo ($current_page == 'logout.php') ? 'active' : ''; ?>">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
@@ -326,11 +328,8 @@ while ($row = $typeResult->fetch_assoc()) {
                                 <i class="fas fa-upload"></i> APK Admin
                             </a>
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-list-alt"></i> TCM
+                                <i class="fas fa-list-alt"></i> Test Case Manager
                             </a>
-							<a href="view_logs.php" class="<?php echo ($current_page == 'view_logs.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-clipboard-list"></i> View Logs
-                </a>
                         </div>
                     </div>
                 <?php endif; ?>
