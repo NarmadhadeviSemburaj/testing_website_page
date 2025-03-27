@@ -1,26 +1,67 @@
 <?php
 session_start();
+include 'log_api.php';
+include 'db_config.php';
+
 // Set session timeout to 5 minutes (300 seconds)
-$timeout = 300; // 5 minutes in seconds
+$timeout = 300;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
-    // Last request was more than 5 minutes ago
-    session_unset();     // Unset $_SESSION variable for this page
-    session_destroy();   // Destroy session data
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'] ?? 'unknown',
+        'session_timeout',
+        "Session timed out due to inactivity on cleared bugs page",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        401,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    session_unset();
+    session_destroy();
     header("Location: index.php");
     exit();
 }
-$_SESSION['last_activity'] = time(); // Update last activity time stamp
+$_SESSION['last_activity'] = time();
+
+// Check if user is logged in
 if (!isset($_SESSION['user'])) {
+    logUserAction(
+        null,
+        'unknown',
+        'unauthorized_access',
+        "Attempted to access cleared bugs page without login",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
     header("Location: index.php");
     exit();
 }
 
-$conn = new mysqli("localhost", "root", "", "testing_db");
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
-}
+// Log successful page access
+logUserAction(
+    $_SESSION['emp_id'] ?? null,
+    $_SESSION['user'],
+    'page_access',
+    "Accessed cleared bugs page",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
 
-// Define the current page
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <!DOCTYPE html>
@@ -28,7 +69,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleared Bugs</title>
+    <title>Cleared Bug Reports</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
@@ -77,6 +118,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             background-color: #007bff;
             color: #fff;
         }
+        
         .sidebar a i {
             margin-right: 10px;
         }
@@ -91,11 +133,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
             margin-left: 220px;
             overflow-y: auto;
         }
-
+        
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
         }
+        
         .admin-section {
             margin-top: 20px;
             padding-top: 20px;
@@ -117,93 +160,66 @@ $current_page = basename($_SERVER['PHP_SELF']);
             margin: 5px 0 0;
             color: #333;
         }
-        .admin-links {
-            display: none;
-        }
 
-        /* Updated Card Styling */
+        /* Bug Card Styling */
         .bug-card {
-            border: 1px solid #e0e0e0;
+            border: 1px solid #ddd;
             border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
-            transition: transform 0.2s, box-shadow 0.2s;
             background-color: #fff;
-            padding: 20px;
-        }
-
-        .bug-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+            padding: 15px;
         }
 
         .bug-card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 10px;
         }
 
         .bug-card-header h5 {
             margin: 0;
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
+            font-size: 16px;
         }
 
-        .badge {
-            font-size: 12px;
-            font-weight: 600;
+        .bug-type {
+            display: inline-block;
             padding: 5px 10px;
-            border-radius: 20px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
         }
+
+        .bug-type-critical { background-color: #dc3545; }
+        .bug-type-high { background-color: #fd7e14; }
+        .bug-type-low { background-color: #ffc107; color: #212529; }
 
         .bug-card-body {
-            margin-bottom: 10px;
-        }
-
-        /* Two-column layout for compact fields */
-        .bug-info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
         }
 
         .bug-info {
-            margin-bottom: 0;
+            margin-bottom: 10px;
         }
 
         .bug-info label {
-            font-weight: 600;
-            margin-bottom: 5px;
+            font-weight: bold;
+            margin-bottom: 3px;
             display: block;
             color: #555;
-            font-size: 13px;
         }
 
         .bug-info p {
             margin: 0;
             overflow-wrap: break-word;
-            color: #333;
-            font-size: 14px;
         }
 
-        .bug-info i {
-            color: #007bff;
-            margin-right: 5px;
-            width: 16px;
-            text-align: center;
-        }
-
-        /* Expandable section styling */
         .expandable-section {
             display: none;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px dashed #e0e0e0;
+            margin-top: 10px;
         }
 
         .expandable-section.expanded {
@@ -215,65 +231,36 @@ $current_page = basename($_SERVER['PHP_SELF']);
             cursor: pointer;
             text-align: center;
             margin-top: 10px;
-            font-size: 14px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
         }
 
         .view-more-btn:hover {
             text-decoration: underline;
         }
 
-        .view-more-btn i {
-            margin-left: 5px;
-            transition: transform 0.2s;
-        }
-
-        .view-more-btn.expanded i {
-            transform: rotate(180deg);
-        }
-
-        /* Attachment styling */
         .attachment-preview {
             max-width: 100%;
             height: auto;
             border-radius: 5px;
             margin-top: 10px;
             max-height: 150px;
-            border: 1px solid #e0e0e0;
+        }
+
+        .cleared-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
         }
 
         .empty-state {
             text-align: center;
-            padding: 40px 20px;
-            background-color: #f9f9f9;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-
-        .empty-state i {
-            font-size: 48px;
-            color: #28a745;
-            margin-bottom: 15px;
-        }
-
-        .empty-state h4 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .empty-state p {
-            color: #666;
-            margin-bottom: 0;
+            padding: 40px 0;
         }
 
         /* Responsive adjustments */
         @media (max-width: 768px) {
-            .bug-info-grid {
-                grid-template-columns: 1fr;
-            }
-            
             .content-container {
                 margin-left: 0;
                 padding-top: 80px;
@@ -297,13 +284,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <div class="wrapper">
         <!-- Sidebar -->
         <div class="sidebar-container">
-            <!-- User Info Section -->
             <div class="user-info">
                 <i class="fas fa-user"></i>
                 <h4><?php echo htmlspecialchars($_SESSION['user']); ?></h4>
             </div>
-
-            <!-- Sidebar Menu -->
             <div class="sidebar">
                 <a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
@@ -317,7 +301,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <a href="logout.php" class="text-danger <?php echo ($current_page == 'logout.php') ? 'active' : ''; ?>">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
-
                 <?php if ($_SESSION['is_admin']): ?>
                     <div class="admin-section">
                         <h4 onclick="toggleAdminLinks()"><i class="fas fa-cogs"></i> Admin <i class="fas fa-chevron-down"></i></h4>
@@ -329,7 +312,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                 <i class="fas fa-upload"></i> APK Admin
                             </a>
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-list-alt"></i> Test Case Manager
+                                <i class="fas fa-list-alt"></i> TCM
+                            </a>
+                            <a href="view_logs.php">
+                                <i class="fas fa-clipboard-list"></i> View Logs
                             </a>
                         </div>
                     </div>
@@ -340,177 +326,375 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <!-- Main Content -->
         <div class="content-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4>Cleared Bugs</h4>
+                <h4>Cleared Bug Reports</h4>
                 <a href="bug_details.php" class="btn btn-primary">
-                    <i class="fas fa-arrow-left"></i> Back to Bug Reports
+                    <i class="fas fa-arrow-left"></i> Back to Open Bugs
                 </a>
             </div>
 
-            <!-- Cleared Bugs Cards Container -->
+            <!-- Cleared Bugs Container -->
             <div class="row bug-cards-container" id="clearedBugsContainer">
-                <!-- Cleared bugs will be dynamically loaded here -->
-            </div>
+                <?php
+                $sql = "SELECT * FROM bug WHERE cleared_flag = 1 ORDER BY cleared_at DESC";
+                $result = $conn->query($sql);
 
-            <!-- Empty state message when no cleared bugs are found -->
-            <div id="emptyState" class="empty-state" style="display:none;">
-                <i class="fas fa-check-circle"></i>
-                <h4>No Cleared Bugs Found</h4>
-                <p>No bugs have been marked as cleared yet.</p>
-            </div>
-        </div>
-        
-        <!-- Session Timeout Popup -->
-        <div id="sessionPopup" class="modal fade" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Session Expiring Soon</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Your session will expire in 2 minutes. Please save your work.</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <script>
-            // Session timeout in milliseconds (5 minutes)
-            const sessionTimeout = 5 * 60 * 1000;
-            const popupTime = 2 * 60 * 1000;
+                if ($result && $result->num_rows > 0) {
+                    logUserAction(
+                        $_SESSION['emp_id'] ?? null,
+                        $_SESSION['user'],
+                        'cleared_bugs_fetch_success',
+                        "Fetched cleared bug reports",
+                        $_SERVER['REQUEST_URI'],
+                        $_SERVER['REQUEST_METHOD'],
+                        ['bug_count' => $result->num_rows],
+                        200,
+                        null,
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT']
+                    );
 
-            setTimeout(() => {
-                const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
-                sessionPopup.show();
-            }, sessionTimeout - popupTime);
+                    while ($row = $result->fetch_assoc()) {
+                        $bugTypeClass = '';
+                        switch ($row['bug_type']) {
+                            case 'Critical': $bugTypeClass = 'bug-type-critical'; break;
+                            case 'High': $bugTypeClass = 'bug-type-high'; break;
+                            case 'Low': $bugTypeClass = 'bug-type-low'; break;
+                        }
+                        $clearedDate = date('Y-m-d H:i', strtotime($row['cleared_at']));
+                        ?>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="bug-card">
+                                <div class="bug-card-header">
+								<i class="fas fa-bug text-primary me-2"></i>
+                                    <h5><?= htmlspecialchars($row['Module_name']) ?></h5>
+                                    <div>
+                                        <span class="<?= $bugTypeClass ?>"><?= htmlspecialchars($row['bug_type']) ?></span>
+                                        <span class="cleared-badge">Cleared</span>
+                                    </div>
+                                </div>
+                                <div class="bug-card-body">
+                                    <div class="bug-info">
+                                        <label><i class="fas fa-align-left"></i> Description</label>
+                                        <p><?= htmlspecialchars($row['description']) ?></p>
+                                    </div>
+                                    
+                                    <div class="bug-info">
+                                        <label><i class="fas fa-user"></i> Cleared By</label>
+                                        <p><?= htmlspecialchars($row['cleared_by']) ?></p>
+                                    </div>
+                                    
+                                    <div class="bug-info">
+                                        <label><i class="far fa-calendar-alt"></i> Cleared At</label>
+                                        <p><?= $clearedDate ?></p>
+                                    </div>
 
-            setTimeout(() => {
-                window.location.href = 'logout.php';
-            }, sessionTimeout);
-
-            function toggleAdminLinks() {
-                const adminLinks = document.querySelector('.admin-links');
-                adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
-            }
-
-            // Function to handle view more/less toggle
-            function toggleBugDetails(btn) {
-                const card = btn.closest('.bug-card');
-                const expandableSection = card.querySelector('.expandable-section');
-                const icon = btn.querySelector('i');
-                
-                expandableSection.classList.toggle('expanded');
-                btn.classList.toggle('expanded');
-                
-                // Update button text
-                if (expandableSection.classList.contains('expanded')) {
-                    btn.innerHTML = '<i class="fas fa-chevron-up"></i> View Less';
-                } else {
-                    btn.innerHTML = '<i class="fas fa-chevron-down"></i> View More';
-                }
-            }
-
-            // Fetch cleared bugs from the API
-            function fetchClearedBugs() {
-                fetch('cleared_bugs_api.php')
-                    .then(response => response.json())
-                    .then(data => {
-                        const clearedBugsContainer = document.getElementById('clearedBugsContainer');
-                        const emptyState = document.getElementById('emptyState');
-
-                        if (data.status === 'success' && data.data.length > 0) {
-                            clearedBugsContainer.innerHTML = ''; // Clear existing content
-
-                            data.data.forEach(bug => {
-                                // Format the cleared_at date
-                                const clearedDate = new Date(bug.cleared_at);
-                                const formattedDate = clearedDate.toLocaleString();
-                                
-                                const bugCard = `
-                                    <div class="col-md-6 col-lg-4">
-                                        <div class="bug-card">
-                                            <div class="bug-card-header">
-                                                <h5>${bug.Module_name}</h5>
-                                                <span class="badge bg-success">Cleared</span>
+                                    <div class="expandable-section" id="expandable_<?= $row['id'] ?>">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="bug-info">
+                                                    <label><i class="fas fa-tag"></i> Product</label>
+                                                    <p><?= htmlspecialchars($row['Product_name']) ?></p>
+                                                </div>
+                                                <div class="bug-info">
+                                                    <label><i class="fas fa-mobile-alt"></i> Device</label>
+                                                    <p><?= htmlspecialchars($row['device_name']) ?></p>
+                                                </div>
                                             </div>
-                                            <div class="bug-card-body">
-                                                <div class="bug-info-grid">
-                                                    <div class="bug-info">
-                                                        <label><i class="fas fa-tag"></i> Product</label>
-                                                        <p>${bug.Product_name}</p>
-                                                    </div>
-                                                    <div class="bug-info">
-                                                        <label><i class="fas fa-code-branch"></i> Version</label>
-                                                        <p>${bug.Version}</p>
-                                                    </div>
-                                                    <div class="bug-info">
-                                                        <label><i class="fas fa-mobile-alt"></i> Device</label>
-                                                        <p>${bug.device_name}</p>
-                                                    </div>
-                                                    <div class="bug-info">
-                                                        <label><i class="fab fa-android"></i> Android Version</label>
-                                                        <p>${bug.android_version}</p>
-                                                    </div>
-                                                    <div class="bug-info">
-                                                        <label><i class="fas fa-user"></i> Cleared By</label>
-                                                        <p>${bug.cleared_by}</p>
-                                                    </div>
-                                                    <div class="bug-info">
-                                                        <label><i class="far fa-calendar-alt"></i> Cleared At</label>
-                                                        <p>${formattedDate}</p>
-                                                    </div>
+                                            <div class="col-md-6">
+                                                <div class="bug-info">
+                                                    <label><i class="fas fa-code-branch"></i> Version</label>
+                                                    <p><?= htmlspecialchars($row['Version']) ?></p>
                                                 </div>
-                                                
-                                                <div class="expandable-section">
-                                                    <div class="bug-info">
-                                                        <label><i class="fas fa-list-ol"></i> Test Steps</label>
-                                                        <p>${bug.test_steps}</p>
-                                                    </div>
-                                                    <div class="bug-info">
-                                                        <label><i class="fas fa-check-circle"></i> Expected Result</label>
-                                                        <p>${bug.expected_results}</p>
-                                                    </div>
-                                                    <div class="bug-info">
-                                                        <label><i class="fas fa-times-circle"></i> Actual Result</label>
-                                                        <p>${bug.actual_result}</p>
-                                                    </div>
-                                                    ${bug.attachment ? `
-                                                    <div class="bug-info">
-                                                        <label><i class="fas fa-paperclip"></i> Attachment</label>
-                                                        <img src="${bug.attachment}" class="attachment-preview" alt="Bug Attachment">
-                                                    </div>` : ''}
-                                                </div>
-                                                
-                                                <div class="text-center">
-                                                    <span class="view-more-btn" onclick="toggleBugDetails(this)">
-                                                        <i class="fas fa-chevron-down"></i> View More
-                                                    </span>
+                                                <div class="bug-info">
+                                                    <label><i class="fab fa-android"></i> Android Version</label>
+                                                    <p><?= htmlspecialchars($row['android_version']) ?></p>
                                                 </div>
                                             </div>
                                         </div>
+                                        
+                                        <div class="bug-info">
+                                            <label><i class="fas fa-list-ol"></i> Test Steps</label>
+                                            <p><?= htmlspecialchars($row['test_steps']) ?></p>
+                                        </div>
+                                        
+                                        <div class="bug-info">
+                                            <label><i class="fas fa-check-circle"></i> Expected Result</label>
+                                            <p><?= htmlspecialchars($row['expected_results']) ?></p>
+                                        </div>
+                                        
+                                        <div class="bug-info">
+                                            <label><i class="fas fa-times-circle"></i> Actual Result</label>
+                                            <p><?= htmlspecialchars($row['actual_result']) ?></p>
+                                        </div>
+                                        
+                                        <?php if (!empty($row['file_attachment'])): ?>
+                                            <div class="bug-info">
+                                                <label><i class="fas fa-paperclip"></i> Attachment</label>
+                                                <?php
+                                                $file_url = htmlspecialchars($row['file_attachment'], ENT_QUOTES, 'UTF-8');
+                                                $file_extension = strtolower(pathinfo($file_url, PATHINFO_EXTENSION));
+                                                
+                                                if (in_array($file_extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                                                    echo '<a href="'.$file_url.'" class="view-attachment-btn" target="_blank"><i class="fas fa-eye"></i> View Image</a>';
+                                                } elseif (in_array($file_extension, ['mp4', 'webm', 'ogg'])) {
+                                                    echo '<a href="'.$file_url.'" class="view-attachment-btn" target="_blank"><i class="fas fa-play"></i> View Video</a>';
+                                                } else {
+                                                    echo '<a href="'.$file_url.'" class="view-attachment-btn" target="_blank"><i class="fas fa-file"></i> View File</a>';
+                                                }
+                                                ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
-                                `;
-                                clearedBugsContainer.insertAdjacentHTML('beforeend', bugCard);
-                            });
 
-                            emptyState.style.display = 'none';
-                        } else {
-                            clearedBugsContainer.innerHTML = '';
-                            emptyState.style.display = 'block';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching cleared bugs:', error);
-                        alert('Failed to fetch cleared bugs. Check the console for details.');
-                    });
+                                    <div class="view-more-btn" onclick="toggleExpandableSection('<?= $row['id'] ?>')">
+                                        View More <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php
+                    }
+                } else {
+                    logUserAction(
+                        $_SESSION['emp_id'] ?? null,
+                        $_SESSION['user'],
+                        'cleared_bugs_empty',
+                        "No cleared bugs found",
+                        $_SERVER['REQUEST_URI'],
+                        $_SERVER['REQUEST_METHOD'],
+                        null,
+                        200,
+                        null,
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT']
+                    );
+                    
+                    echo '<div class="col-12 empty-state">
+                            <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
+                            <h4 class="mt-3">No Cleared Bug Reports</h4>
+                            <p class="text-muted">No bugs have been marked as cleared yet.</p>
+                          </div>';
+                }
+                $conn->close();
+                ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Timeout Modal -->
+    <div class="modal fade" id="sessionPopup" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Session Expiring Soon</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Your session will expire in 2 minutes. Please save your work.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toggle expandable section
+        function toggleExpandableSection(id) {
+            const section = document.getElementById('expandable_' + id);
+            const btn = section.closest('.bug-card-body').querySelector('.view-more-btn');
+            
+            section.classList.toggle('expanded');
+            if (section.classList.contains('expanded')) {
+                btn.innerHTML = 'View Less <i class="fas fa-chevron-up"></i>';
+                
+                // Log section expansion
+                $.ajax({
+                    url: 'log_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'log_bug_details_expanded',
+                        bug_id: id,
+                        user_id: '<?php echo $_SESSION['emp_id'] ?? ''; ?>',
+                        username: '<?php echo $_SESSION['user']; ?>'
+                    }
+                });
+            } else {
+                btn.innerHTML = 'View More <i class="fas fa-chevron-down"></i>';
             }
+        }
 
-            // Fetch cleared bugs when the page loads
-            document.addEventListener('DOMContentLoaded', fetchClearedBugs);
-        </script>
-    </body>
+        function toggleAdminLinks() {
+            const adminLinks = document.querySelector('.admin-links');
+            adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
+            
+            // Log admin links toggle
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_admin_links_toggle',
+                    state: adminLinks.style.display,
+                    user_id: '<?php echo $_SESSION['emp_id'] ?? ''; ?>',
+                    username: '<?php echo $_SESSION['user']; ?>'
+                }
+            });
+        }
+
+        // Session timeout handling
+        const sessionTimeout = 5 * 60 * 1000; // 5 minutes
+        const popupTime = 2 * 60 * 1000; // Show popup 2 minutes before timeout
+
+        // Show the session timeout popup
+        setTimeout(() => {
+            const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
+            sessionPopup.show();
+            
+            // Log session timeout warning
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_session_timeout_warning',
+                    user_id: '<?php echo $_SESSION['emp_id'] ?? ''; ?>',
+                    username: '<?php echo $_SESSION['user']; ?>',
+                    page: 'cleared_bugs'
+                }
+            });
+        }, sessionTimeout - popupTime);
+
+        // Redirect to logout after timeout
+        setTimeout(() => {
+            // Log session timeout
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_session_timeout',
+                    user_id: '<?php echo $_SESSION['emp_id'] ?? ''; ?>',
+                    username: '<?php echo $_SESSION['user']; ?>',
+                    page: 'cleared_bugs'
+                },
+                complete: function() {
+                    window.location.href = 'logout.php';
+                }
+            });
+        }, sessionTimeout);
+
+        // Refresh cleared bugs every 30 seconds
+        setInterval(function() {
+            $.ajax({
+                url: 'cleared_bugs_api.php',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    if (data.status === 'success') {
+                        // Update the UI with new data
+                        updateClearedBugsUI(data.data);
+                        
+                        // Log successful refresh
+                        $.ajax({
+                            url: 'log_api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'log_cleared_bugs_refresh',
+                                count: data.data.length,
+                                user_id: '<?php echo $_SESSION['emp_id'] ?? ''; ?>',
+                                username: '<?php echo $_SESSION['user']; ?>'
+                            }
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    // Log refresh error
+                    $.ajax({
+                        url: 'log_api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'log_cleared_bugs_refresh_error',
+                            error: error,
+                            user_id: '<?php echo $_SESSION['emp_id'] ?? ''; ?>',
+                            username: '<?php echo $_SESSION['user']; ?>'
+                        }
+                    });
+                }
+            });
+        }, 30000);
+
+        function updateClearedBugsUI(bugs) {
+            const container = $('#clearedBugsContainer');
+            const emptyState = $('.empty-state');
+            
+            if (bugs.length > 0) {
+                container.empty();
+                
+                bugs.forEach(bug => {
+                    const bugTypeClass = 'bug-type-' + bug.bug_type.toLowerCase();
+                    const clearedDate = new Date(bug.cleared_at).toLocaleString();
+                    
+                    const bugCard = `
+                        <div class="col-md-6 col-lg-4">
+                            <div class="bug-card">
+                                <div class="bug-card-header">
+                                    <h5>${bug.Module_name}</h5>
+                                    <div>
+                                        <span class="${bugTypeClass}">${bug.bug_type}</span>
+                                        <span class="cleared-badge">Cleared</span>
+                                    </div>
+                                </div>
+                                <div class="bug-card-body">
+                                    <div class="bug-info">
+                                        <label><i class="fas fa-align-left"></i> Description</label>
+                                        <p>${bug.description}</p>
+                                    </div>
+                                    
+                                    <div class="bug-info">
+                                        <label><i class="fas fa-user"></i> Cleared By</label>
+                                        <p>${bug.cleared_by}</p>
+                                    </div>
+                                    
+                                    <div class="bug-info">
+                                        <label><i class="far fa-calendar-alt"></i> Cleared At</label>
+                                        <p>${clearedDate}</p>
+                                    </div>
+
+                                    <div class="expandable-section" id="expandable_${bug.id}">
+                                        <!-- Additional bug details here -->
+                                    </div>
+
+                                    <div class="view-more-btn" onclick="toggleExpandableSection('${bug.id}')">
+                                        View More <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.append(bugCard);
+                });
+                
+                emptyState.hide();
+            } else {
+                container.empty();
+                emptyState.show();
+            }
+        }
+
+        // Initialize the page
+        $(document).ready(function() {
+            // Log page load
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_page_load',
+                    page: 'cleared_bugs',
+                    user_id: '<?php echo $_SESSION['emp_id'] ?? ''; ?>',
+                    username: '<?php echo $_SESSION['user']; ?>'
+                }
+            });
+        });
+    </script>
+</body>
 </html>

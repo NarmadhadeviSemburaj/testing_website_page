@@ -27,7 +27,7 @@ logUserAction(
     null,
     $_SERVER['REMOTE_ADDR'],
     $_SERVER['HTTP_USER_AGENT']
-); // <-- This closing parenthesis was missing
+);
 
 // Check if the user is an admin
 $is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true;
@@ -171,39 +171,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 text-align: center;
                 margin-top: 20px;
             }
-            
-            /* Admin-only log viewer */
-            .log-viewer {
-                margin-top: 30px;
-                padding: 20px;
-                background-color: #f8f9fa;
-                border-radius: 8px;
-                display: none;
-            }
-            
-            .log-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 15px;
-            }
-            
-            .log-table th, .log-table td {
-                padding: 8px 12px;
-                border: 1px solid #dee2e6;
-                text-align: left;
-            }
-            
-            .log-table th {
-                background-color: #e9ecef;
-            }
-            
-            .log-table tr:nth-child(even) {
-                background-color: #f8f9fa;
-            }
-            
-            .log-table tr:hover {
-                background-color: #e9ecef;
-            }
     </style>
 </head>
 <body>
@@ -247,7 +214,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
                                 <i class="fas fa-list-alt"></i> TCM
                             </a>
-                            <a href="#" onclick="toggleLogViewer(); return false;">
+                            <a href="view_logs.php" class="<?php echo ($current_page == 'view_logs.php') ? 'active' : ''; ?>">
                                 <i class="fas fa-clipboard-list"></i> View Logs
                             </a>
                         </div>
@@ -261,32 +228,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <div class="welcome-message">
                 <h4>Welcome, <?php echo htmlspecialchars($_SESSION['user']); ?>!</h4>
             </div>
-            
-            <!-- Admin-only log viewer -->
-            <?php if ($_SESSION['is_admin']): ?>
-                <div id="logViewer" class="log-viewer">
-                    <h5>System Logs</h5>
-                    <button class="btn btn-sm btn-primary mb-2" onclick="refreshLogs()">
-                        <i class="fas fa-sync"></i> Refresh
-                    </button>
-                    <div class="table-responsive">
-                        <table class="log-table">
-                            <thead>
-                                <tr>
-                                    <th>Timestamp</th>
-                                    <th>User</th>
-                                    <th>Action</th>
-                                    <th>Endpoint</th>
-                                    <th>IP Address</th>
-                                </tr>
-                            </thead>
-                            <tbody id="logTableBody">
-                                <!-- Logs will be loaded here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 
@@ -295,51 +236,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
         function toggleAdminLinks() {
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
-        }
-        
-        // Function to toggle log viewer visibility (admin only)
-        function toggleLogViewer() {
-            const logViewer = document.getElementById('logViewer');
-            logViewer.style.display = logViewer.style.display === 'block' ? 'none' : 'block';
-            
-            // Load logs if showing
-            if (logViewer.style.display === 'block') {
-                refreshLogs();
-            }
-        }
-        
-        // Function to refresh logs via AJAX
-        function refreshLogs() {
-            $.ajax({
-                url: 'get_logs.php',
-                type: 'GET',
-                dataType: 'json',
-                success: function(data) {
-                    if (data.status === 'success') {
-                        const tbody = $('#logTableBody');
-                        tbody.empty();
-                        
-                        data.logs.forEach(log => {
-                            const row = `
-                                <tr>
-                                    <td>${log.created_at}</td>
-                                    <td>${log.username}</td>
-                                    <td>${log.action_type}</td>
-                                    <td>${log.endpoint}</td>
-                                    <td>${log.ip_address}</td>
-                                </tr>
-                            `;
-                            tbody.append(row);
-                        });
-                    } else {
-                        alert('Error loading logs: ' + data.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error loading logs:', error);
-                    alert('Failed to load logs. Check console for details.');
-                }
-            });
         }
         
         // Log important client-side actions

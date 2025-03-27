@@ -3,24 +3,8 @@
 
 include 'db_config.php';
 
-/**
- * Logs user actions into the `log` table.
- *
- * @param string $user_id The ID of the user performing the action.
- * @param string $username The username of the user.
- * @param string $action_type The type of action (e.g., "login", "logout").
- * @param string $action_description Description of the action.
- * @param string $endpoint The API endpoint or page where the action occurred.
- * @param string $http_method The HTTP method used (e.g., "GET", "POST").
- * @param array|null $request_payload The request payload (if any).
- * @param int|null $response_status The HTTP response status code.
- * @param array|null $response_data The response data (if any).
- * @param string $ip_address The IP address of the user.
- * @param string $user_agent The user agent string of the user's browser.
- * @return bool Returns true if the log was successfully inserted, false otherwise.
- */
 function logUserAction(
-    $user_id,
+    $user_id = null,
     $username,
     $action_type,
     $action_description = null,
@@ -51,6 +35,7 @@ function logUserAction(
 
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
+        error_log("Failed to prepare log statement: " . $conn->error);
         return false;
     }
 
@@ -76,23 +61,21 @@ function logUserAction(
 
     // Execute the query
     $result = $stmt->execute();
+    if (!$result) {
+        error_log("Failed to log action: " . $stmt->error);
+    }
+    
     $stmt->close();
-
     return $result;
 }
 
-/**
- * Fetches logs from the `log` table.
- *
- * @param int $limit The maximum number of logs to fetch.
- * @return array Returns an array of log entries.
- */
 function fetchLogs($limit = 100) {
     global $conn;
 
     $sql = "SELECT * FROM `log` ORDER BY `created_at` DESC LIMIT ?";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
+        error_log("Failed to prepare fetch logs statement: " . $conn->error);
         return [];
     }
 
@@ -102,6 +85,13 @@ function fetchLogs($limit = 100) {
     $logs = [];
 
     while ($row = $result->fetch_assoc()) {
+        // Decode JSON fields
+        if ($row['request_payload']) {
+            $row['request_payload'] = json_decode($row['request_payload'], true);
+        }
+        if ($row['response_data']) {
+            $row['response_data'] = json_decode($row['response_data'], true);
+        }
         $logs[] = $row;
     }
 

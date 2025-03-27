@@ -295,6 +295,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .filter-row .form-group label {
             font-size: 14px;
         }
+		.progress {
+				height: 25px;
+				border-radius: 5px;
+			}
+			.progress-bar {
+				font-weight: bold;
+			}
+			#uploadStatusMessage {
+				font-weight: bold;
+				margin: 10px 0;
+			}
+			#uploadDetails {
+				font-size: 0.9em;
+			}
         
         .filter-row .form-select {
             font-size: 14px;
@@ -597,6 +611,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+	<div class="modal fade" id="uploadProgressModal" tabindex="-1" aria-labelledby="uploadProgressModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadProgressModalLabel">Uploading Excel File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" disabled></button>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">0%</div>
+                </div>
+                <div id="uploadStatusMessage" class="text-center">Preparing upload...</div>
+                <div id="uploadDetails" class="small text-muted mt-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
     <script>
         // JavaScript to handle edit button click
@@ -770,44 +802,134 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'none' ? 'block' : 'none';
         }
+         document.getElementById("excel_file").addEventListener("change", function() {
+        let fileInput = this;
+        if (fileInput.files.length === 0) {
+            logClientAction('excel_upload_canceled', 'No file selected for upload');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const maxSize = 10 * 1024 * 1024; // 10MB max file size
         
-        // Handle Excel file upload
-        document.getElementById("excel_file").addEventListener("change", function() {
-            let fileInput = this;
-            if (fileInput.files.length === 0) {
-                logClientAction('excel_upload_canceled', 'No file selected for upload');
-                return;
+        // Validate file size
+        if (file.size > maxSize) {
+            logClientAction('excel_upload_size_error', 'File too large: ' + file.name);
+            alert('File size exceeds 10MB limit');
+            return;
+        }
+
+        // Show progress modal
+        const progressModal = new bootstrap.Modal(document.getElementById('uploadProgressModal'));
+        const progressBar = document.getElementById('uploadProgressBar');
+        const statusMessage = document.getElementById('uploadStatusMessage');
+        const uploadDetails = document.getElementById('uploadDetails');
+        
+        progressModal.show();
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        statusMessage.textContent = 'Preparing upload...';
+        uploadDetails.textContent = `File: ${file.name} (${formatFileSize(file.size)})`;
+        
+        // Log file upload attempt
+        logClientAction('excel_upload_attempt', 'Attempting to upload Excel file: ' + file.name);
+
+        let formData = new FormData();
+        formData.append("excel_file", file);
+
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressBar.textContent = percentComplete + '%';
+                statusMessage.textContent = `Uploading... (${percentComplete}%)`;
+                
+                // Update details with transfer info
+                uploadDetails.textContent = `File: ${file.name} (${formatFileSize(e.loaded)} of ${formatFileSize(e.total)})`;
             }
-
-            // Log file upload attempt
-            logClientAction('excel_upload_attempt', 'Attempting to upload Excel file: ' + fileInput.files[0].name);
-
-            let formData = new FormData();
-            formData.append("excel_file", fileInput.files[0]);
-
-            console.log("Uploading file:", fileInput.files[0].name);
-
-            fetch("upload_excel.php", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success") {
-                    logClientAction('excel_upload_success', 'Successfully uploaded Excel file: ' + fileInput.files[0].name);
-                    alert(data.message);
-                    location.reload(); // Refresh to show new data
-                } else {
-                    logClientAction('excel_upload_failed', 'Failed to upload Excel file: ' + (data.message || "Unknown error"));
-                    alert(data.message);
-                }
-            })
-            .catch(error => {
-                logClientAction('excel_upload_error', 'Error uploading Excel file: ' + error.message);
-                console.error("Error:", error);
-                alert("An error occurred while uploading the file.");
-            });
         });
+
+        xhr.addEventListener('load', function() {
+            try {
+                const data = JSON.parse(xhr.responseText);
+                if (data.status === "success") {
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-success');
+                    statusMessage.textContent = 'Upload complete! Processing data...';
+                    logClientAction('excel_upload_success', 'Successfully uploaded Excel file: ' + file.name);
+                    
+                    // Simulate processing delay (actual processing happens server-side)
+                    setTimeout(() => {
+                        progressModal.hide();
+                        alert(data.message);
+                        location.reload();
+                    }, 1000);
+                } else {
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-danger');
+                    statusMessage.textContent = 'Upload failed';
+                    logClientAction('excel_upload_failed', 'Failed to upload Excel file: ' + (data.message || "Unknown error"));
+                    setTimeout(() => {
+                        progressModal.hide();
+                        alert(data.message || "Error processing file");
+                    }, 1000);
+                }
+            } catch (e) {
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-danger');
+                statusMessage.textContent = 'Error processing response';
+                logClientAction('excel_upload_parse_error', 'Error parsing server response: ' + e.message);
+                setTimeout(() => {
+                    progressModal.hide();
+                    alert("Error processing server response");
+                }, 1000);
+            }
+        });
+
+        xhr.addEventListener('error', function() {
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-danger');
+            statusMessage.textContent = 'Upload failed';
+            logClientAction('excel_upload_error', 'Network error during upload');
+            setTimeout(() => {
+                progressModal.hide();
+                alert("Network error during upload");
+            }, 1000);
+        });
+
+        xhr.addEventListener('abort', function() {
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-warning');
+            statusMessage.textContent = 'Upload cancelled';
+            logClientAction('excel_upload_cancelled', 'Upload cancelled by user');
+            setTimeout(() => {
+                progressModal.hide();
+            }, 1000);
+        });
+
+        xhr.open("POST", "upload_excel.php", true);
+        xhr.send(formData);
+        
+        // Make modal non-closable during upload
+        const modalElement = document.getElementById('uploadProgressModal');
+        modalElement.addEventListener('hide.bs.modal', function (event) {
+            if (xhr.readyState !== 4) { // If upload not complete
+                event.preventDefault();
+            }
+        });
+    });
+
+    // Helper function to format file size
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+    }
+        
         
         // Clear form when modal is opened for adding new test case
         document.getElementById('testCaseModal').addEventListener('show.bs.modal', function (event) {

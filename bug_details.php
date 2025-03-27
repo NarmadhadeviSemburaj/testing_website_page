@@ -1,8 +1,25 @@
 <?php
 session_start();
+include 'log_api.php';
+include 'db_config.php';
+
 // Set session timeout to 5 minutes (300 seconds)
 $timeout = 300;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
+    logUserAction(
+        $_SESSION['emp_id'] ?? null,
+        $_SESSION['user'] ?? 'unknown',
+        'session_timeout',
+        "Session timed out due to inactivity on bug details page",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        401,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
     session_unset();
     session_destroy();
     header("Location: index.php");
@@ -10,7 +27,41 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
 }
 $_SESSION['last_activity'] = time();
 
-include 'db_config.php';
+// Check if user is logged in
+if (!isset($_SESSION['user'])) {
+    logUserAction(
+        null,
+        'unknown',
+        'unauthorized_access',
+        "Attempted to access bug details page without login",
+        $_SERVER['REQUEST_URI'],
+        $_SERVER['REQUEST_METHOD'],
+        null,
+        403,
+        null,
+        $_SERVER['REMOTE_ADDR'],
+        $_SERVER['HTTP_USER_AGENT']
+    );
+    
+    header("Location: index.php");
+    exit();
+}
+
+// Log successful page access
+logUserAction(
+    $_SESSION['emp_id'] ?? null,
+    $_SESSION['user'],
+    'page_access',
+    "Accessed bug details page",
+    $_SERVER['REQUEST_URI'],
+    $_SERVER['REQUEST_METHOD'],
+    null,
+    200,
+    null,
+    $_SERVER['REMOTE_ADDR'],
+    $_SERVER['HTTP_USER_AGENT']
+);
+
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <!DOCTYPE html>
@@ -24,7 +75,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-		html, body {
+				html, body {
             height: 100%;
             margin: 0;
             padding: 0;
@@ -288,15 +339,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
 </head>
 <body>
     <div class="wrapper">
-        <!-- Sidebar (unchanged from your original) -->
+        <!-- Sidebar -->
         <div class="sidebar-container">
             <div class="user-info">
                 <i class="fas fa-user"></i>
                 <h4><?php echo htmlspecialchars($_SESSION['user']); ?></h4>
             </div>
             <div class="sidebar">
-                <!-- Your original sidebar links -->
-				<a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
+                <a href="summary.php" class="<?php echo ($current_page == 'summary.php') ? 'active' : ''; ?>">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
                 <a href="update_tc3.php" class="<?php echo ($current_page == 'update_tc3.php') ? 'active' : ''; ?>">
@@ -321,6 +371,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
                                 <i class="fas fa-list-alt"></i> Test Case Manager
                             </a>
+                            <a href="view_logs.php">
+                                <i class="fas fa-clipboard-list"></i> View Logs
+                            </a>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -330,19 +383,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <!-- Main Content -->
         <div class="content-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4>Bug Reports</h4>
+                <h4>Open Bug Reports</h4>
                 <a href="cleared_bugs7.php" class="btn btn-success">
                     <i class="fas fa-history"></i> View Cleared Bugs
                 </a>
             </div>
-			            <!-- Filter Section -->
+            
+            <!-- Filter Section -->
             <div class="filter-row">
                 <div class="form-group">
                     <label for="filterProduct">Product:</label>
                     <select id="filterProduct" class="form-select">
                         <option value="">All Products</option>
                         <?php
-                        $sql_products = "SELECT DISTINCT Product_name FROM bug";
+                        $sql_products = "SELECT DISTINCT Product_name FROM bug WHERE cleared_flag = 0";
                         $result_products = $conn->query($sql_products);
                         while ($row = $result_products->fetch_assoc()) { ?>
                             <option value="<?php echo htmlspecialchars($row['Product_name']); ?>">
@@ -356,7 +410,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <select id="filterVersion" class="form-select">
                         <option value="">All Versions</option>
                         <?php
-                        $sql_versions = "SELECT DISTINCT Version FROM bug";
+                        $sql_versions = "SELECT DISTINCT Version FROM bug WHERE cleared_flag = 0";
                         $result_versions = $conn->query($sql_versions);
                         while ($row = $result_versions->fetch_assoc()) { ?>
                             <option value="<?php echo htmlspecialchars($row['Version']); ?>">
@@ -370,7 +424,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <select id="filterBugType" class="form-select">
                         <option value="">All Bug Types</option>
                         <?php
-                        $sql_bug_types = "SELECT DISTINCT bug_type FROM bug";
+                        $sql_bug_types = "SELECT DISTINCT bug_type FROM bug WHERE cleared_flag = 0";
                         $result_bug_types = $conn->query($sql_bug_types);
                         while ($row = $result_bug_types->fetch_assoc()) { ?>
                             <option value="<?php echo htmlspecialchars($row['bug_type']); ?>">
@@ -394,6 +448,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 $result = $conn->query($sql);
 
                 if ($result->num_rows > 0) {
+                    logUserAction(
+                        $_SESSION['emp_id'] ?? null,
+                        $_SESSION['user'],
+                        'bug_fetch_success',
+                        "Fetched open bug reports",
+                        $_SERVER['REQUEST_URI'],
+                        $_SERVER['REQUEST_METHOD'],
+                        ['bug_count' => $result->num_rows],
+                        200,
+                        null,
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT']
+                    );
+
                     while ($row = $result->fetch_assoc()) {
                         $bugTypeClass = '';
                         switch ($row['bug_type']) {
@@ -412,7 +480,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                     <span class="bug-type <?= $bugTypeClass ?>"><?= htmlspecialchars($row['bug_type']) ?></span>
                                 </div>
                                 <div class="bug-card-body">
-                                    <!-- All your original card content preserved -->
                                     <div class="bug-info">
                                         <label><i class="fas fa-align-left"></i> Description</label>
                                         <p><?= htmlspecialchars($row['description']) ?></p>
@@ -430,7 +497,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                         <p><?= htmlspecialchars($row['actual_result']) ?></p>
                                     </div>
 
-                                    <!-- Expandable section -->
                                     <div class="expandable-section" id="expandable_<?= $row['id'] ?>">
                                         <div class="row">
                                             <div class="col-md-6">
@@ -481,7 +547,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                         <?php endif; ?>
                                     </div>
 
-                                    <!-- View More Button and Mark as Cleared Button -->
                                     <div class="bug-card-footer">
                                         <div class="view-more-btn" onclick="toggleExpandableSection('<?= $row['id'] ?>')">
                                             View More <i class="fas fa-chevron-down"></i>
@@ -496,6 +561,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         <?php
                     }
                 } else {
+                    logUserAction(
+                        $_SESSION['emp_id'] ?? null,
+                        $_SESSION['user'],
+                        'bug_fetch_empty',
+                        "No open bugs found",
+                        $_SERVER['REQUEST_URI'],
+                        $_SERVER['REQUEST_METHOD'],
+                        null,
+                        200,
+                        null,
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT']
+                    );
+                    
                     echo '<div class="col-12 empty-state">
                             <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
                             <h4 class="mt-3">No Open Bug Reports</h4>
@@ -503,6 +582,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
                           </div>';
                 }
                 ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Timeout Modal -->
+    <div class="modal fade" id="sessionPopup" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Session Expiring Soon</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Your session will expire in 2 minutes. Please save your work.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+                </div>
             </div>
         </div>
     </div>
@@ -517,115 +614,234 @@ $current_page = basename($_SERVER['PHP_SELF']);
             section.classList.toggle('expanded');
             if (section.classList.contains('expanded')) {
                 btn.innerHTML = 'View Less <i class="fas fa-chevron-up"></i>';
+                
+                // Log section expansion
+                $.ajax({
+                    url: 'log_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'log_client_action',
+                        action_type: 'bug_details_expanded',
+                        description: 'Expanded bug details',
+                        bug_id: id
+                    },
+                    dataType: 'json'
+                });
             } else {
                 btn.innerHTML = 'View More <i class="fas fa-chevron-down"></i>';
             }
         }
-		function toggleAdminLinks() {
+
+        function toggleAdminLinks() {
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
+            
+            // Log admin links toggle
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: 'admin_links_toggle',
+                    description: 'Toggled admin links visibility'
+                },
+                dataType: 'json'
+            });
         }
 
-        // Handle clear button
-        $(document).on('click', '.clear-btn', function() {
-            const bugId = $(this).data('id');
-            const testcaseId = $(this).closest('.bug-card').data('testcase-id');
-            
-            if (!bugId) {
-                alert('Error: Bug ID is missing');
-                return;
-            }
-
-            if (confirm("Are you sure you want to mark this bug as cleared?")) {
-                $.ajax({
-                    url: 'bug_reports_api.php',
-                    type: 'POST',
-                    data: {
-                        action: 'clear_bug',
-                        id: bugId,
-                        testcase_id: testcaseId
-                    },
-                    dataType: 'json',
-                    success: function(data) {
-                        if (data.status === 'success') {
-                            const card = $('#card_' + bugId);
-                            card.css({
-                                'opacity': '0',
-                                'transform': 'scale(0.9)',
-                                'transition': 'all 0.3s ease'
-                            });
-                            
-                            setTimeout(() => {
-                                card.closest('.bug-card-col').remove();
-                                
-                                // Show empty state if no bugs left
-                                if ($('.bug-card-col').length === 0) {
-                                    $('#bugCardsContainer').html(`
-                                        <div class="col-12 empty-state">
-                                            <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
-                                            <h4 class="mt-3">No Open Bug Reports</h4>
-                                            <p class="text-muted">All bugs have been cleared.</p>
-                                        </div>
-                                    `);
-                                }
-                            }, 300);
-                        } else {
-                            alert('Error: ' + data.message);
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        alert('An error occurred. Please try again.');
-                        console.error(error);
-                    }
-                });
-            }
-        });
-
-        // Filter functionality
         $(document).ready(function() {
+            // Log client-side page load
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: 'page_load',
+                    description: 'Loaded bug details page'
+                },
+                dataType: 'json'
+            });
+
             // Handle clear button clicks
             $(document).on('click', '.clear-btn', function() {
                 const bugId = $(this).data('id');
+                const testcaseId = $(this).closest('.bug-card').data('testcase-id');
+                const card = $(this).closest('.bug-card-col');
                 
+                if (!bugId) {
+                    alert('Error: Bug ID is missing');
+                    
+                    // Log missing bug ID error
+                    $.ajax({
+                        url: 'log_api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'log_client_action',
+                            action_type: 'bug_clear_error',
+                            description: 'Missing bug ID when attempting to clear bug'
+                        },
+                        dataType: 'json'
+                    });
+                    return;
+                }
+
                 if (confirm("Are you sure you want to mark this bug as cleared?")) {
-                    // Send Ajax request to bug_report_api.php
+                    // Log bug clear attempt
+                    $.ajax({
+                        url: 'log_api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'log_client_action',
+                            action_type: 'bug_clear_attempt',
+                            description: 'Attempting to clear bug',
+                            bug_id: bugId,
+                            testcase_id: testcaseId
+                        },
+                        dataType: 'json'
+                    });
+
                     $.ajax({
                         url: 'bug_reports_api.php',
                         type: 'POST',
                         data: {
                             action: 'clear_bug',
-                            id: bugId
+                            id: bugId,
+                            testcase_id: testcaseId
                         },
                         dataType: 'json',
-                        success: function(data) {
-                            if (data.status === 'success') {
+                        success: function(response) {
+                            if (response && response.status === 'success') {
                                 // Remove the card with animation
-                                const card = $('#card_' + bugId);
                                 card.css({
                                     'opacity': '0',
-                                    'transform': 'scale(0.8)',
-                                    'transition': 'opacity 0.3s, transform 0.3s'
+                                    'transform': 'scale(0.9)',
+                                    'transition': 'all 0.3s ease'
                                 });
                                 
                                 setTimeout(() => {
-                                    card.closest('.bug-card-col').remove();
-                                    checkEmptyState();
+                                    card.remove();
+                                    
+                                    // Show empty state if no bugs left
+                                    if ($('.bug-card-col').length === 0) {
+                                        $('#bugCardsContainer').html(`
+                                            <div class="col-12 empty-state">
+                                                <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
+                                                <h4 class="mt-3">No Open Bug Reports</h4>
+                                                <p class="text-muted">All bugs have been cleared.</p>
+                                            </div>
+                                        `);
+                                    }
                                 }, 300);
+                                
+                                // Log successful bug clearance
+                                $.ajax({
+                                    url: 'log_api.php',
+                                    type: 'POST',
+                                    data: {
+                                        action: 'log_client_action',
+                                        action_type: 'bug_clear_success',
+                                        description: 'Successfully cleared bug',
+                                        bug_id: bugId,
+                                        testcase_id: testcaseId
+                                    },
+                                    dataType: 'json'
+                                });
                             } else {
-                                alert('Error updating bug: ' + data.message);
+                                const errorMsg = response && response.message 
+                                    ? response.message 
+                                    : 'Unknown error occurred';
+                                alert('Error: ' + errorMsg);
+                                
+                                // Log bug clear failure
+                                $.ajax({
+                                    url: 'log_api.php',
+                                    type: 'POST',
+                                    data: {
+                                        action: 'log_client_action',
+                                        action_type: 'bug_clear_failed',
+                                        description: errorMsg,
+                                        bug_id: bugId,
+                                        testcase_id: testcaseId,
+                                        error: errorMsg
+                                    },
+                                    dataType: 'json'
+                                });
                             }
                         },
                         error: function(xhr, status, error) {
-                            console.error('Error:', error);
-                            alert('An error occurred while clearing the bug.');
+                            alert('An error occurred. Please check console for details.');
+                            console.error('AJAX Error:', status, error);
+                            
+                            // Log AJAX error for bug clearance
+                            $.ajax({
+                                url: 'log_api.php',
+                                type: 'POST',
+                                data: {
+                                    action: 'log_client_action',
+                                    action_type: 'bug_clear_error',
+                                    description: 'AJAX error when clearing bug',
+                                    bug_id: bugId,
+                                    testcase_id: testcaseId,
+                                    error: error
+                                },
+                                dataType: 'json'
+                            });
                         }
+                    });
+                } else {
+                    // Log bug clear cancellation
+                    $.ajax({
+                        url: 'log_api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'log_client_action',
+                            action_type: 'bug_clear_cancelled',
+                            description: 'User cancelled bug clearance',
+                            bug_id: bugId,
+                            testcase_id: testcaseId
+                        },
+                        dataType: 'json'
                     });
                 }
             });
 
             // Filter functionality
-            $('#applyFilter').click(applyFilters);
-            $('#resetFilter').click(resetFilters);
+            $('#applyFilter').click(function() {
+                // Log filter application
+                $.ajax({
+                    url: 'log_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'log_client_action',
+                        action_type: 'bug_filter_applied',
+                        description: 'Applied bug filters',
+                        filters: {
+                            product: $('#filterProduct').val(),
+                            version: $('#filterVersion').val(),
+                            bug_type: $('#filterBugType').val()
+                        }
+                    },
+                    dataType: 'json'
+                });
+                
+                applyFilters();
+            });
+            
+            $('#resetFilter').click(function() {
+                // Log filter reset
+                $.ajax({
+                    url: 'log_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'log_client_action',
+                        action_type: 'bug_filter_reset',
+                        description: 'Reset bug filters'
+                    },
+                    dataType: 'json'
+                });
+                
+                resetFilters();
+            });
 
             function applyFilters() {
                 const productFilter = $('#filterProduct').val();
@@ -670,26 +886,73 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 $('#filterBugType').val('');
 
                 $('.bug-card-col').show();
-
                 checkEmptyState();
             }
 
             function checkEmptyState() {
                 const visibleCards = $('.bug-card-col:visible').length;
-                const emptyState = $('#emptyState');
-                const noBugsMessage = $('.empty-state').not('#emptyState');
-
+                
                 if (visibleCards === 0) {
-                    emptyState.show();
-                    if (noBugsMessage.length) noBugsMessage.hide();
+                    if ($('.empty-state').length === 0) {
+                        $('#bugCardsContainer').append(`
+                            <div class="col-12 empty-state">
+                                <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
+                                <h4 class="mt-3">No Open Bug Reports</h4>
+                                <p class="text-muted">No bugs match the current filters.</p>
+                            </div>
+                        `);
+                    }
+                    
+                    // Log empty state after filtering
+                    $.ajax({
+                        url: 'log_api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'log_client_action',
+                            action_type: 'bug_filter_empty',
+                            description: 'No bugs match current filters',
+                            filters: {
+                                product: $('#filterProduct').val(),
+                                version: $('#filterVersion').val(),
+                                bug_type: $('#filterBugType').val()
+                            }
+                        },
+                        dataType: 'json'
+                    });
                 } else {
-                    emptyState.hide();
-                    if (noBugsMessage.length) noBugsMessage.hide();
+                    $('.empty-state').remove();
                 }
             }
 
             // Initial check
             checkEmptyState();
+            
+            // Session timeout handling
+            const sessionTimeout = 5 * 60 * 1000; // 5 minutes
+            const popupTime = 2 * 60 * 1000; // Show popup 2 minutes before timeout
+
+            // Show the session timeout popup
+            setTimeout(() => {
+                const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
+                sessionPopup.show();
+                
+                // Log session timeout warning
+                $.ajax({
+                    url: 'log_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'log_client_action',
+                        action_type: 'session_timeout_warning',
+                        description: 'Session timeout warning shown on bug details page'
+                    },
+                    dataType: 'json'
+                });
+            }, sessionTimeout - popupTime);
+
+            // Redirect to logout after timeout
+            setTimeout(() => {
+                window.location.href = 'logout.php';
+            }, sessionTimeout);
         });
     </script>
 </body>

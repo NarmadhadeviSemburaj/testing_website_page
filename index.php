@@ -2,15 +2,9 @@
 session_start();
 if (isset($_SESSION['user'])) {
     session_regenerate_id(true); // Prevent session fixation
-		// After successful login in login.php
-	$_SESSION['emp_id'] = $row['emp_id']; // Set emp_id in the session
-	$_SESSION['user'] = $row['emp_name']; // Set username in the session
-	$_SESSION['is_admin'] = (int)$row['is_admin'] === 1; // Set admin status
-    $_SESSION['last_activity'] = time();
     header("Location: home.php");
     exit();
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -27,9 +21,9 @@ if (isset($_SESSION['user'])) {
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            background: white; /* Gradient background */
+            background: white;
             margin: 0;
-            font-family: 'Poppins', sans-serif; /* Modern font */
+            font-family: 'Poppins', sans-serif;
         }
 
         .container {
@@ -53,7 +47,7 @@ if (isset($_SESSION['user'])) {
 
         #lottie-animation {
             width: 100%;
-            max-width: 800px; /* Increased animation size for large screens */
+            max-width: 800px;
             height: auto;
         }
 
@@ -66,16 +60,16 @@ if (isset($_SESSION['user'])) {
         }
 
         .login-section h3 {
-            color: #007bff; /* Blue text for the heading */
+            color: #007bff;
             margin-bottom: 1.5rem;
-            font-size: 2rem; /* Larger font size */
-            font-weight: 600; /* Bold font weight */
-            animation: fadeInDown 1s ease-in-out; /* Fade-in animation */
+            font-size: 2rem;
+            font-weight: 600;
+            animation: fadeInDown 1s ease-in-out;
         }
 
         .form-control {
-            border-radius: 10px; /* Rounded corners */
-            border: 1px solid #ccc; /* Light gray border */
+            border-radius: 10px;
+            border: 1px solid #ccc;
             padding: 0.75rem;
             margin-bottom: 1rem;
             width: 100%;
@@ -85,12 +79,12 @@ if (isset($_SESSION['user'])) {
 
         .form-control:focus {
             border-color: #007bff;
-            box-shadow: 0 0 8px rgba(0, 123, 255, 0.3); /* Subtle glow effect */
-            transform: scale(1.02); /* Slight scale-up effect */
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+            transform: scale(1.02);
         }
 
         .btn-primary {
-            background-color: #007bff; /* Blue button */
+            background-color: #007bff;
             border: none;
             padding: 0.75rem;
             border-radius: 10px;
@@ -102,8 +96,8 @@ if (isset($_SESSION['user'])) {
 
         .btn-primary:hover {
             background-color: #0056b3;
-            transform: translateY(-2px); /* Lift effect on hover */
-            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3); /* Shadow on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
         }
 
         .forgot-password {
@@ -124,12 +118,11 @@ if (isset($_SESSION['user'])) {
         }
 
         footer {
-            background-color: rgba(248, 249, 250, 0.8); /* Semi-transparent footer */
+            background-color: rgba(248, 249, 250, 0.8);
             padding: 1rem 0;
             text-align: center;
         }
 
-        /* Animations */
         @keyframes fadeInDown {
             0% {
                 opacity: 0;
@@ -153,58 +146,56 @@ if (isset($_SESSION['user'])) {
         }
 
         .form-control, .btn-primary, .forgot-password {
-            animation: fadeInUp 1s ease-in-out; /* Fade-in animation for form elements */
+            animation: fadeInUp 1s ease-in-out;
         }
 
-        /* Media Queries for Responsiveness */
         @media (max-width: 768px) {
             .container {
-                flex-direction: column; /* Stack vertically on smaller screens */
+                flex-direction: column;
                 padding: 1rem;
             }
 
             .animation-section {
-                order: 1; /* Animation on top */
+                order: 1;
                 margin-top: 2rem;
             }
 
             .login-section {
-                order: 2; /* Login below animation */
+                order: 2;
                 max-width: 100%;
                 padding: 1rem;
             }
 
             #lottie-animation {
-                max-width: 300px; /* Smaller animation for mobile */
+                max-width: 300px;
             }
 
             .login-section h3 {
-                font-size: 1.75rem; /* Smaller heading for mobile */
+                font-size: 1.75rem;
             }
         }
 
         @media (max-width: 480px) {
             #lottie-animation {
-                max-width: 200px; /* Even smaller animation for very small screens */
+                max-width: 200px;
             }
 
             .login-section h3 {
-                font-size: 1.5rem; /* Smaller heading for very small screens */
+                font-size: 1.5rem;
             }
         }
     </style>
-    <!-- Load Poppins font from Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <div class="container">
-    <!-- Animation Section (Left Side on Full Screen) -->
+    <!-- Animation Section -->
     <div class="animation-section">
         <div id="lottie-animation"></div>
     </div>
 
-    <!-- Login Section (Right Side on Full Screen) -->
+    <!-- Login Section -->
     <div class="login-section">
         <h3>Welcome Back 😊</h3>
         <?php
@@ -253,7 +244,7 @@ if (isset($_SESSION['user'])) {
             renderer: 'svg',
             loop: true,
             autoplay: true,
-            path: 'lotteflies.json' // Path to your Lottie JSON file
+            path: 'lotteflies.json'
         });
     });
 </script>
