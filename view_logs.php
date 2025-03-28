@@ -3,12 +3,12 @@ session_start();
 include 'db_config.php';
 
 // Check if user is logged in and is admin
-if (!isset($_SESSION['user']) {
+if (!isset($_SESSION['user'])) {
     header("Location: index.php");
     exit();
 }
 
-if (!isset($_SESSION['is_admin']) {
+if (!isset($_SESSION['is_admin'])) {
     header("Location: summary.php");
     exit();
 }
@@ -103,12 +103,12 @@ while ($row = $typeResult->fetch_assoc()) {
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         .wrapper {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             padding: 20px;
         }
 
@@ -125,6 +125,53 @@ while ($row = $typeResult->fetch_assoc()) {
             left: 20px;
             top: 20px;
             bottom: 20px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar-container.collapsed {
+            transform: translateX(-240px);
+        }
+
+        .sidebar-container.show {
+            transform: translateX(0);
+        }
+
+        .content-container {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            min-height: 100vh;
+            margin-left: 220px;
+            transition: margin-left 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .content-container.expanded {
+            margin-left: 20px;
+        }
+
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            left: 3px;
+            top: 20px;
+            z-index: 1050;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
         }
 
         .sidebar a {
@@ -145,25 +192,24 @@ while ($row = $typeResult->fetch_assoc()) {
             margin-right: 10px;
         }
 
-        .content-container {
-            flex: 1;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            height: 100vh;
-            margin-left: 220px;
-            overflow-y: auto;
-        }
-
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background-color 0.3s;
         }
+
+        .admin-section h4:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+
         .admin-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
         }
 
         .user-info {
@@ -181,6 +227,7 @@ while ($row = $typeResult->fetch_assoc()) {
             margin: 5px 0 0;
             color: #333;
         }
+
         .admin-links {
             display: none;
         }
@@ -271,30 +318,72 @@ while ($row = $typeResult->fetch_assoc()) {
             margin-bottom: 20px;
         }
 
-        @media (max-width: 768px) {
-            .content-container {
-                margin-left: 0;
-                padding-top: 80px;
-            }
-            
+        /* Pagination styling */
+        .pagination {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .page-item.active .page-link {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .page-link {
+            color: #007bff;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 767.98px) {
             .sidebar-container {
-                width: 100%;
-                height: auto;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                z-index: 1000;
-                margin-right: 0;
-                border-radius: 0;
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            .filter-container .row > div {
+                margin-bottom: 10px;
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 1199.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .sidebar-toggle {
+                display: none;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div class="wrapper">
         <!-- Sidebar -->
-        <div class="sidebar-container">
+        <div class="sidebar-container" id="sidebarContainer">
             <div class="user-info">
                 <i class="fas fa-user"></i>
                 <h4><?php echo htmlspecialchars($_SESSION['user']); ?></h4>
@@ -310,9 +399,7 @@ while ($row = $typeResult->fetch_assoc()) {
                 <a href="bug_details.php" class="<?php echo ($current_page == 'bug_details.php') ? 'active' : ''; ?>">
                     <i class="fas fa-bug"></i> Bug Reports
                 </a>
-                <a href="view_logs.php" class="<?php echo ($current_page == 'view_logs.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-clipboard-list"></i> View Logs
-                </a>
+                
                 <a href="logout.php" class="text-danger <?php echo ($current_page == 'logout.php') ? 'active' : ''; ?>">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
@@ -328,7 +415,10 @@ while ($row = $typeResult->fetch_assoc()) {
                                 <i class="fas fa-upload"></i> APK Admin
                             </a>
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-list-alt"></i> Test Case Manager
+                                <i class="fas fa-list-alt"></i> TCM
+                            </a>
+                            <a href="view_logs.php" class="<?php echo ($current_page == 'view_logs.php') ? 'active' : ''; ?>">
+                                <i class="fas fa-clipboard-list"></i> View Logs
                             </a>
                         </div>
                     </div>
@@ -337,7 +427,7 @@ while ($row = $typeResult->fetch_assoc()) {
         </div>
 
         <!-- Main Content -->
-        <div class="content-container">
+        <div class="content-container" id="contentContainer">
             <h4 class="mb-4">System Logs</h4>
             
             <!-- Filter Section -->
@@ -458,34 +548,75 @@ while ($row = $typeResult->fetch_assoc()) {
                         </div>
                     <?php endforeach; ?>
 
-                    <!-- Pagination -->
-                    <nav aria-label="Logs pagination">
-                        <ul class="pagination justify-content-center mt-4">
-                            <?php if ($page > 1): ?>
-                                <li class="page-item">
-                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>">
-                                        Previous
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-                            
-                            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>">
-                                        <?php echo $i; ?>
-                                    </a>
-                                </li>
-                            <?php endfor; ?>
-                            
-                            <?php if ($page < $totalPages): ?>
-                                <li class="page-item">
-                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>">
-                                        Next
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-                        </ul>
-                    </nav>
+                    <!-- Pagination - Fixed to be visible -->
+                    <div style="margin-top: 30px; margin-bottom: 30px;">
+                        <nav aria-label="Logs pagination">
+                            <ul class="pagination justify-content-center">
+                                <?php 
+                                $maxPagesToShow = 8; // Maximum number of page links to show
+                                $half = floor($maxPagesToShow / 2);
+                                $startPage = max(1, min($page - $half, $totalPages - $maxPagesToShow + 1));
+                                $endPage = min($startPage + $maxPagesToShow - 1, $totalPages);
+                                
+                                // Previous button
+                                if ($page > 1): ?>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>" aria-label="Previous">
+                                            <span aria-hidden="true">&laquo;</span>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                                
+                                <?php 
+                                // Show first page and ellipsis if needed
+                                if ($startPage > 1): ?>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => 1])); ?>">1</a>
+                                    </li>
+                                    <?php if ($startPage > 2): ?>
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                                
+                                <?php 
+                                // Show page numbers
+                                for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                    <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
+                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>">
+                                            <?php echo $i; ?>
+                                        </a>
+                                    </li>
+                                <?php endfor; ?>
+                                
+                                <?php 
+                                // Show last page and ellipsis if needed
+                                if ($endPage < $totalPages): ?>
+                                    <?php if ($endPage < $totalPages - 1): ?>
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    <?php endif; ?>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $totalPages])); ?>">
+                                            <?php echo $totalPages; ?>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                                
+                                <?php 
+                                // Next button
+                                if ($page < $totalPages): ?>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>" aria-label="Next">
+                                            <span aria-hidden="true">&raquo;</span>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                        </nav>
+                    </div>
                 <?php else: ?>
                     <div class="alert alert-info">
                         No logs found matching your criteria.
@@ -516,6 +647,36 @@ while ($row = $typeResult->fetch_assoc()) {
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.log-card.error .log-header').forEach(header => {
                 toggleLogDetails(header);
+            });
+
+            // Sidebar toggle functionality
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarContainer = document.getElementById('sidebarContainer');
+            const contentContainer = document.getElementById('contentContainer');
+
+            sidebarToggle.addEventListener('click', function() {
+                sidebarContainer.classList.toggle('show');
+                contentContainer.classList.toggle('expanded');
+            });
+
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth < 1200) {
+                    if (!e.target.closest('#sidebarContainer') && 
+                        !e.target.isSameNode(sidebarToggle) && 
+                        sidebarContainer.classList.contains('show')) {
+                        sidebarContainer.classList.remove('show');
+                        contentContainer.classList.add('expanded');
+                    }
+                }
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 1200) {
+                    sidebarContainer.classList.remove('show');
+                    contentContainer.classList.remove('expanded');
+                }
             });
         });
     </script>

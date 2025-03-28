@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'log_api.php';
+include 'db_config.php';
 
 if (!isset($_SESSION['user'])) {
     header("Location: index.php");
@@ -29,20 +30,15 @@ $filter_name = $_GET['filter_name'] ?? '';
 $filter_product = $_GET['filter_product'] ?? '';
 $filter_version = $_GET['filter_version'] ?? '';
 
-// Database connection
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "testing_db";
 
 try {
-    $conn = new mysqli($servername, $username, $password, $dbname);
+    
     
     if ($conn->connect_error) {
         throw new Exception("Connection failed: " . $conn->connect_error);
     }
 
-    // Build the test results query
+    // Build the test results query - Include pending tests in counts
     $sql = "SELECT 
                 DATE(tested_at) as date,
                 tested_by_name,
@@ -51,6 +47,7 @@ try {
                 COUNT(id) AS total_tests,
                 SUM(CASE WHEN testing_result = 'Pass' THEN 1 ELSE 0 END) AS passed,
                 SUM(CASE WHEN testing_result = 'Fail' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN testing_result IS NULL THEN 1 ELSE 0 END) AS pending,
                 SUM(CASE WHEN bug_type = 'Critical' THEN 1 ELSE 0 END) AS critical_bugs,
                 SUM(CASE WHEN bug_type = 'High' THEN 1 ELSE 0 END) AS high_bugs,
                 SUM(CASE WHEN bug_type = 'Low' THEN 1 ELSE 0 END) AS low_bugs
@@ -74,11 +71,12 @@ try {
     $result = $conn->query($sql);
     $testing_summary = $result->fetch_all(MYSQLI_ASSOC);
 
-    // Get data for charts
+    // Get data for charts - Include pending tests
     $chart_sql = "SELECT 
                     DATE(tested_at) as date,
                     SUM(CASE WHEN testing_result = 'Pass' THEN 1 ELSE 0 END) AS passed,
                     SUM(CASE WHEN testing_result = 'Fail' THEN 1 ELSE 0 END) AS failed,
+                    SUM(CASE WHEN testing_result IS NULL THEN 1 ELSE 0 END) AS pending,
                     COUNT(id) AS total_tests
                 FROM testcase
                 WHERE tested_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
@@ -133,12 +131,12 @@ try {
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         .wrapper {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             padding: 20px;
         }
 
@@ -155,11 +153,57 @@ try {
             left: 20px;
             top: 20px;
             bottom: 20px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar-container.collapsed {
+            transform: translateX(-240px);
+        }
+
+        .sidebar-container.show {
+            transform: translateX(0);
+        }
+
+        .content-container {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            min-height: 100vh;
+            margin-left: 220px;
+            transition: margin-left 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .content-container.expanded {
+            margin-left: 20px;
+        }
+
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            left: 3px;
+            top: 20px;
+            z-index: 1050;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
         }
 
         .sidebar a {
-            display: flex;
-            align-items: center;
+            display: block;
             padding: 10px;
             margin: 10px 0;
             text-decoration: none;
@@ -172,21 +216,13 @@ try {
             background-color: #007bff;
             color: #fff;
         }
-
         .sidebar a i {
             margin-right: 10px;
-        }
-
-        .separator {
-            height: 1px;
-            background-color: #ddd;
-            margin: 20px 0;
         }
 
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
-            text-align: center;
             margin: 10px 0;
             padding: 10px;
             border-radius: 10px;
@@ -198,39 +234,10 @@ try {
             color: #fff;
         }
 
-        .admin-links {
-            display: none;
-        }
-
-        .admin-links a {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin: 5px 0;
-            text-decoration: none;
-            color: #333;
-            border-radius: 10px;
-            transition: background-color 0.3s;
-        }
-
-        .admin-links a:hover {
-            background-color: #007bff;
-            color: #fff;
-        }
-
-        .admin-links a i {
-            margin-right: 10px;
-        }
-
-        .content-container {
-            flex: 1;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            height: 100vh;
-            margin-left: 220px;
-            overflow-y: auto;
+        .admin-section {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
         }
 
         .user-info {
@@ -249,12 +256,22 @@ try {
             color: #333;
         }
 
+        .admin-links {
+            display: none;
+        }
+
         /* Dashboard specific styles */
         .card {
             border: none;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         .card-header {
@@ -273,17 +290,23 @@ try {
         .badge {
             font-weight: 500;
             padding: 5px 10px;
+            border-radius: 12px;
         }
 
         .chart-container {
             position: relative;
-            height: 300px;
+            height: 250px;
             width: 100%;
         }
 
         .progress {
             height: 8px;
             background-color: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .progress-bar {
+            border-radius: 4px;
         }
 
         /* Status colors */
@@ -293,6 +316,10 @@ try {
 
         .text-danger {
             color: #dc3545 !important;
+        }
+
+        .text-warning {
+            color: #ffc107 !important;
         }
 
         .bg-success-light {
@@ -307,21 +334,99 @@ try {
             background-color: rgba(0, 123, 255, 0.1);
         }
 
-        @media (max-width: 992px) {
+        .bg-warning-light {
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+
+        /* Header with inline filters */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-title {
+            margin: 0;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-input {
+            width: 180px;
+            border-radius: 8px;
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+        }
+
+        .filter-btn {
+            border-radius: 8px;
+            padding: 8px 15px;
+        }
+
+        @media (max-width: 767.98px) {
             .sidebar-container {
-                transform: translateX(-100%);
-                z-index: 1000;
-            }
-            .content-container {
-                margin-left: 0;
+                transform: translateX(-240px);
             }
             .sidebar-container.show {
                 transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .filter-group {
+                width: 100%;
+            }
+            
+            .filter-input {
+                flex-grow: 1;
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 1199.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .sidebar-toggle {
+                display: none;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div class="wrapper">
         <!-- Sidebar -->
         <div class="sidebar-container" id="sidebarContainer">
@@ -344,11 +449,9 @@ try {
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
 
-                <div class="separator"></div>
-
                 <?php if ($_SESSION['is_admin']): ?>
                 <div class="admin-section">
-                    <h4 onclick="toggleAdminLinks()">Admin</h4>
+                    <h4 onclick="toggleAdminLinks()"><i class="fas fa-cogs"></i> Admin <i class="fas fa-chevron-down"></i></h4>
                     <div class="admin-links">
                         <a href="employees.php" class="<?= ($current_page == 'employees.php') ? 'active' : '' ?>">
                             <i class="fas fa-users"></i> Employees
@@ -370,16 +473,56 @@ try {
 
         <!-- Main Content -->
         <div class="content-container" id="contentContainer">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="mb-0">Test Summary</h3>
-                <a href="update_tc3.php" class="btn btn-primary">
-                    <i class="fas fa-play me-2"></i> Start Testing
+            <!-- Header with inline filters -->
+            <div class="page-header">
+                <h3 class="page-title">Test Summary</h3>
+                
+                <div class="filter-group">
+                    <form id="filterForm" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+                        <input type="text" class="form-control filter-input" id="filter_name" name="filter_name" 
+                               value="<?= htmlspecialchars($filter_name) ?>" placeholder="Tester"
+                               list="nameSuggestions" autocomplete="off">
+                        <datalist id="nameSuggestions">
+                            <?php foreach ($distinct_values['names'] ?? [] as $name): ?>
+                                <option value="<?= htmlspecialchars($name) ?>">
+                            <?php endforeach; ?>
+                        </datalist>
+                        
+                        <input type="text" class="form-control filter-input" id="filter_product" name="filter_product" 
+                               value="<?= htmlspecialchars($filter_product) ?>" placeholder="Product"
+                               list="productSuggestions" autocomplete="off">
+                        <datalist id="productSuggestions">
+                            <?php foreach ($distinct_values['products'] ?? [] as $product): ?>
+                                <option value="<?= htmlspecialchars($product) ?>">
+                            <?php endforeach; ?>
+                        </datalist>
+                        
+                        <input type="text" class="form-control filter-input" id="filter_version" name="filter_version" 
+                               value="<?= htmlspecialchars($filter_version) ?>" placeholder="Version"
+                               list="versionSuggestions" autocomplete="off">
+                        <datalist id="versionSuggestions">
+                            <?php foreach ($distinct_values['versions'] ?? [] as $version): ?>
+                                <option value="<?= htmlspecialchars($version) ?>">
+                            <?php endforeach; ?>
+                        </datalist>
+                        
+                        <button type="submit" class="btn btn-primary filter-btn">
+                            <i class="fas fa-filter me-1"></i> Filter
+                        </button>
+                        <a href="summary.php" class="btn btn-outline-secondary filter-btn">
+                            <i class="fas fa-times me-1"></i> Clear
+                        </a>
+                    </form>
+                </div>
+                
+                <a href="update_tc3.php" class="btn btn-primary ms-auto">
+                    <i class="fas fa-play me-1"></i> Start Testing
                 </a>
             </div>
 
-            <!-- Stats Cards -->
+            <!-- Stats Cards - Now with 4 cards including Pending -->
             <div class="row mb-4">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card border-start border-3 border-primary">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
@@ -395,7 +538,7 @@ try {
                     </div>
                 </div>
                 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card border-start border-3 border-success">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
@@ -411,7 +554,7 @@ try {
                     </div>
                 </div>
                 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card border-start border-3 border-danger">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
@@ -426,9 +569,25 @@ try {
                         </div>
                     </div>
                 </div>
+                
+                <div class="col-md-3">
+                    <div class="card border-start border-3 border-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-muted mb-2">Pending Tests</h6>
+                                    <h3 class="mb-0"><?= array_sum(array_column($testing_summary, 'pending')) ?></h3>
+                                </div>
+                                <div class="bg-warning-light p-3 rounded">
+                                    <i class="fas fa-clock text-warning fs-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Charts -->
+            <!-- Charts - Now showing pending tests in graphs -->
             <div class="row mb-4">
                 <div class="col-lg-8">
                     <div class="card">
@@ -456,65 +615,14 @@ try {
                 </div>
             </div>
 
-            <!-- Filter Form -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter Test Results</h5>
-                </div>
-                <div class="card-body">
-                    <form id="filterForm" method="GET" class="row g-3">
-                        <div class="col-md-4">
-                            <label for="filter_name" class="form-label">Tester Name</label>
-                            <input type="text" class="form-control" id="filter_name" name="filter_name" 
-                                   value="<?= htmlspecialchars($filter_name) ?>" placeholder="Filter by name"
-                                   list="nameSuggestions">
-                            <datalist id="nameSuggestions">
-                                <?php foreach ($distinct_values['names'] ?? [] as $name): ?>
-                                    <option value="<?= htmlspecialchars($name) ?>">
-                                <?php endforeach; ?>
-                            </datalist>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="filter_product" class="form-label">Product</label>
-                            <input type="text" class="form-control" id="filter_product" name="filter_product" 
-                                   value="<?= htmlspecialchars($filter_product) ?>" placeholder="Filter by product"
-                                   list="productSuggestions">
-                            <datalist id="productSuggestions">
-                                <?php foreach ($distinct_values['products'] ?? [] as $product): ?>
-                                    <option value="<?= htmlspecialchars($product) ?>">
-                                <?php endforeach; ?>
-                            </datalist>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="filter_version" class="form-label">Version</label>
-                            <input type="text" class="form-control" id="filter_version" name="filter_version" 
-                                   value="<?= htmlspecialchars($filter_version) ?>" placeholder="Filter by version"
-                                   list="versionSuggestions">
-                            <datalist id="versionSuggestions">
-                                <?php foreach ($distinct_values['versions'] ?? [] as $version): ?>
-                                    <option value="<?= htmlspecialchars($version) ?>">
-                                <?php endforeach; ?>
-                            </datalist>
-                        </div>
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-filter me-2"></i> Apply Filters
-                            </button>
-                            <a href="summary.php" class="btn btn-outline-secondary">
-                                <i class="fas fa-times me-2"></i> Clear Filters
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Test Results Table -->
+            <!-- Test Results Table - Without pending column -->
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-table me-2"></i>Test Results</h5>
                     <div>
                         <span class="badge bg-success me-2">Passed: <?= array_sum(array_column($testing_summary, 'passed')) ?></span>
-                        <span class="badge bg-danger">Failed: <?= array_sum(array_column($testing_summary, 'failed')) ?></span>
+                        <span class="badge bg-danger me-2">Failed: <?= array_sum(array_column($testing_summary, 'failed')) ?></span>
+                        <span class="badge bg-warning">Pending: <?= array_sum(array_column($testing_summary, 'pending')) ?></span>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -526,7 +634,6 @@ try {
                                     <th>Tester</th>
                                     <th>Product</th>
                                     <th>Version</th>
-                                    <th>Status</th>
                                     <th>Passed</th>
                                     <th>Failed</th>
                                     <th>Bugs</th>
@@ -540,18 +647,6 @@ try {
                                         <td><?= htmlspecialchars($row['tested_by_name']) ?></td>
                                         <td><?= htmlspecialchars($row['Product_name']) ?></td>
                                         <td><?= htmlspecialchars($row['Version']) ?></td>
-                                        <td>
-                                            <?php 
-                                            $pass_rate = ($row['total_tests'] > 0) ? ($row['passed'] / $row['total_tests']) * 100 : 0;
-                                            if ($pass_rate >= 90) {
-                                                echo '<span class="badge bg-success">Excellent</span>';
-                                            } elseif ($pass_rate >= 70) {
-                                                echo '<span class="badge bg-primary">Good</span>';
-                                            } else {
-                                                echo '<span class="badge bg-danger">Needs Work</span>';
-                                            }
-                                            ?>
-                                        </td>
                                         <td class="text-success fw-bold"><?= $row['passed'] ?></td>
                                         <td class="text-danger fw-bold"><?= $row['failed'] ?></td>
                                         <td>
@@ -589,9 +684,9 @@ try {
             adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
         }
 
-        // Initialize charts
+        // Initialize charts with pending tests included
         function initCharts() {
-            // Trend Chart (Line)
+            // Trend Chart (Line) with pending tests
             const trendCtx = document.getElementById('trendChart').getContext('2d');
             const trendChart = new Chart(trendCtx, {
                 type: 'line',
@@ -602,17 +697,43 @@ try {
                             label: 'Passed Tests',
                             data: <?= json_encode(array_column($chart_data, 'passed')) ?>,
                             borderColor: '#28a745',
-                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                            tension: 0.3,
-                            fill: true
+                            backgroundColor: 'rgba(40, 167, 69, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#28a745',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
                         },
                         {
                             label: 'Failed Tests',
                             data: <?= json_encode(array_column($chart_data, 'failed')) ?>,
                             borderColor: '#dc3545',
-                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                            tension: 0.3,
-                            fill: true
+                            backgroundColor: 'rgba(220, 53, 69, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#dc3545',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Pending Tests',
+                            data: <?= json_encode(array_column($chart_data, 'pending')) ?>,
+                            borderColor: '#ffc107',
+                            backgroundColor: 'rgba(255, 193, 7, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#ffc107',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
                         }
                     ]
                 },
@@ -622,43 +743,86 @@ try {
                     plugins: {
                         legend: {
                             position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#333',
+                            bodyColor: '#666',
+                            borderColor: '#eee',
+                            borderWidth: 1,
+                            padding: 12,
+                            usePointStyle: true
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
                             ticks: {
                                 precision: 0
                             }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.4
                         }
                     }
                 }
             });
 
-            // Status Chart (Doughnut)
+            // Status Chart (Doughnut) with pending tests
             const statusCtx = document.getElementById('statusChart').getContext('2d');
             const statusChart = new Chart(statusCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Passed', 'Failed'],
+                    labels: ['Passed', 'Failed', 'Pending'],
                     datasets: [{
                         data: [
                             <?= array_sum(array_column($testing_summary, 'passed')) ?>,
-                            <?= array_sum(array_column($testing_summary, 'failed')) ?>
+                            <?= array_sum(array_column($testing_summary, 'failed')) ?>,
+                            <?= array_sum(array_column($testing_summary, 'pending')) ?>
                         ],
                         backgroundColor: [
                             '#28a745',
-                            '#dc3545'
+                            '#dc3545',
+                            '#ffc107'
                         ],
-                        borderWidth: 1
+                        borderWidth: 0,
+                        hoverOffset: 10
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    cutout: '70%',
                     plugins: {
                         legend: {
                             position: 'right',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#333',
+                            bodyColor: '#666',
+                            borderColor: '#eee',
+                            borderWidth: 1,
+                            padding: 12,
+                            usePointStyle: true
                         }
                     }
                 }
@@ -668,6 +832,27 @@ try {
         // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initCharts();
+            
+            // Enhance autocomplete for tester name
+            const nameInput = document.getElementById('filter_name');
+            if (nameInput) {
+                nameInput.addEventListener('input', function() {
+                    const inputValue = this.value.toLowerCase();
+                    const suggestions = <?= json_encode($distinct_values['names'] ?? []) ?>;
+                    const filteredSuggestions = suggestions.filter(name => 
+                        name.toLowerCase().includes(inputValue)
+                    );
+                    
+                    const datalist = document.getElementById('nameSuggestions');
+                    datalist.innerHTML = '';
+                    
+                    filteredSuggestions.forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        datalist.appendChild(option);
+                    });
+                });
+            }
         });
     </script>
 </body>

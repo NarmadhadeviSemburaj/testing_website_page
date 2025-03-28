@@ -2,10 +2,9 @@
 header('Content-Type: application/json');
 session_start();
 
-// Include logging functions and database configuration
+// Include logging functions
 include 'log_api.php';
 include 'db_config.php';
-
 // Log API request initiation
 logUserAction(
     $_SESSION['emp_id'] ?? null,
@@ -49,9 +48,6 @@ if (isset($_FILES['excel_file']) && $_FILES['excel_file']['error'] == 0) {
     $file = $_FILES['excel_file']['tmp_name'];
 
     try {
-        // Get database connection
-        $conn = getDBConnection();
-        
         $spreadsheet = IOFactory::load($file);
         $sheet = $spreadsheet->getActiveSheet();
         $data = $sheet->toArray();
@@ -75,6 +71,26 @@ if (isset($_FILES['excel_file']) && $_FILES['excel_file']['error'] == 0) {
             );
             
             echo json_encode(["status" => "error", "message" => "No test cases found in the file"]);
+            exit;
+        }
+
+        
+        if ($conn->connect_error) {
+            logUserAction(
+                $_SESSION['emp_id'] ?? null,
+                $_SESSION['user'] ?? 'api_user',
+                'upload_excel_db_error',
+                "Database connection failed",
+                $_SERVER['REQUEST_URI'],
+                $_SERVER['REQUEST_METHOD'],
+                ['error' => $conn->connect_error],
+                500,
+                null,
+                $_SERVER['REMOTE_ADDR'],
+                $_SERVER['HTTP_USER_AGENT']
+            );
+            
+            echo json_encode(["status" => "error", "message" => "Database connection failed"]);
             exit;
         }
 
@@ -181,11 +197,6 @@ if (isset($_FILES['excel_file']) && $_FILES['excel_file']['error'] == 0) {
         );
         
         echo json_encode(["status" => "error", "message" => "Error processing file: " . $e->getMessage()]);
-    } finally {
-        // Close the database connection if it exists
-        if (isset($conn)) {
-            $conn->close();
-        }
     }
 } else {
     $errorMsg = "No file uploaded";

@@ -1,0 +1,79 @@
+Product Name,Version,Module Name,Description,Preconditions,Test Steps,Expected Results
+Test Management System,V1.0,Login,Verify that the login page loads correctly with all elements.,1. User is not logged in. <br> 2. Browser is open and navigated to the login page.,1. Open the login page.,"1. The login page should load with the animation, email/mobile field, password field, and login button."
+Test Management System,V1.0,Login,Validate the login form with valid credentials.,1. User is not logged in. <br> 2. Valid credentials are available.,"1. Enter a valid email/mobile number. <br> 2. Enter a valid password. <br> 3. Click ""Login"".",1. The user should be redirected to `home.php`. <br> 2. Session should be created.
+Test Management System,V1.0,Login,Validate the login form with invalid email/mobile format.,1. User is not logged in. <br> 2. Invalid email/mobile format is available.,"1. Enter an invalid email/mobile number. <br> 2. Enter any password. <br> 3. Click ""Login"".","1. An alert should appear: ""Please enter a valid email or mobile number."""
+Test Management System,V1.0,Login,Validate the login form with a password less than 6 characters.,1. User is not logged in. <br> 2. Valid email/mobile is available.,"1. Enter a valid email/mobile number. <br> 2. Enter a password with less than 6 characters. <br> 3. Click ""Login"".","1. An alert should appear: ""Password must be at least 6 characters long."""
+Test Management System,V1.0,Login,Validate the login form with incorrect credentials.,1. User is not logged in. <br> 2. Incorrect credentials are available.,"1. Enter an incorrect email/mobile number. <br> 2. Enter an incorrect password. <br> 3. Click ""Login"".","1. An error message should be displayed: ""Invalid credentials."""
+Test Management System,V1.0,Login,"Verify the """"Forgot Password"""" link functionality.",1. User is not logged in. <br> 2. Browser is open and navigated to the login page.,"1. Click the ""Forgot Password"" link.",1. The user should be redirected to `forgot_password.php`.
+Test Management System,V1.0,Login,Verify that the session is regenerated upon successful login.,1. User is not logged in. <br> 2. Valid credentials are available.,"1. Enter valid credentials. <br> 2. Click ""Login"".",1. The session ID should be regenerated. <br> 2. Session fixation should be prevented.
+Test Management System,V1.0,Login,Verify the responsiveness of the login page on different screen sizes.,1. User is not logged in. <br> 2. Browser is open and navigated to the login page.,1. Open the login page on a desktop. <br> 2. Resize the browser to mobile size.,"1. On desktop, the animation and login form should be side by side. <br> 2. On mobile, the animation should be on top, and the login form below."
+Test Management System,V1.0,Login,Verify that the Lottie animation loads correctly.,1. User is not logged in. <br> 2. Browser is open and navigated to the login page.,1. Open the login page.,1. The Lottie animation should load and play automatically.
+Test Management System,V1.0,Login,Verify that the login page prevents access if the user is already logged in.,1. User is already logged in.,1. Navigate to the login page.,1. The user should be redirected to `home.php`.
+Test Management System,V1.0,Authentication,Verify login with valid email and correct password.,1. User is not logged in.,1. Enter a valid email.,1. The user should be redirected to home.php.
+,,,,2. Valid email and password are available.,2. Enter the correct password.,2. Session should be created.
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify login with valid mobile number and correct password.,1. User is not logged in.,1. Enter a valid mobile number.,1. The user should be redirected to home.php.
+,,,,2. Valid mobile number and password are available.,2. Enter the correct password.,2. Session should be created.
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify login with valid email and incorrect password.,1. User is not logged in.,1. Enter a valid email.,"1. An error message should be displayed: ""Invalid email/mobile or password."""
+,,,,2. Valid email and incorrect password are available.,2. Enter an incorrect password.,
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify login with valid mobile number and incorrect password.,1. User is not logged in.,1. Enter a valid mobile number.,"1. An error message should be displayed: ""Invalid email/mobile or password."""
+,,,,2. Valid mobile number and incorrect password are available.,2. Enter an incorrect password.,
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify login with invalid email format.,1. User is not logged in.,1. Enter an invalid email.,"1. An error message should be displayed: ""Invalid email or mobile number format."""
+,,,,2. Invalid email format is available.,2. Enter any password.,
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify login with invalid mobile number format.,1. User is not logged in.,1. Enter an invalid mobile number.,"1. An error message should be displayed: ""Invalid email or mobile number format."""
+,,,,2. Invalid mobile number format is available.,2. Enter any password.,
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify login with empty email/mobile field.,1. User is not logged in.,1. Leave the email/mobile field empty.,"1. An error message should be displayed: ""Email/Mobile and Password are required."""
+,,,,,2. Enter any password.,
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify login with empty password field.,1. User is not logged in.,1. Enter a valid email/mobile number.,"1. An error message should be displayed: ""Email/Mobile and Password are required."""
+,,,,,2. Leave the password field empty.,
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify login with non-existent email/mobile.,1. User is not logged in.,1. Enter a non-existent email/mobile number.,"1. An error message should be displayed: ""Invalid email/mobile or password."""
+,,,,2. Non-existent email/mobile is available.,2. Enter any password.,
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify password migration from MD5 to Bcrypt.,1. User is not logged in.,1. Enter a valid email/mobile number.,1. The MD5 password should be migrated to Bcrypt.
+,,,,2. User has an MD5 hashed password in the database.,2. Enter the correct password.,2. The user should be redirected to home.php.
+,,,,,3. Submit the form.,
+Test Management System,V1.0,Authentication,Verify session regeneration upon successful login.,1. User is not logged in.,1. Enter valid credentials.,1. The session ID should be regenerated.
+,,,,2. Valid credentials are available.,2. Submit the form.,2. Session fixation should be prevented.
+Test Management System,V1.0,Authentication,Verify admin flag is correctly set in the session.,1. User is not logged in.,1. Enter valid admin credentials.,1. The is_admin flag should be set to 1 in the session.
+,,,,2. Valid admin credentials are available.,2. Submit the form.,
+Test Management System,V1.0,Authentication,Verify non-admin flag is correctly set in the session.,1. User is not logged in.,1. Enter valid non-admin credentials.,1. The is_admin flag should be set to 0 in the session.
+,,,,2. Valid non-admin credentials are available.,2. Submit the form.,
+Test Management System,V1.0,Forgot Password,"Verify that the ""Forgot Password"" page loads correctly.",1. User is not logged in.,1. Open the forgot password page.,"1. The page should load with a form containing an email input field and a ""Send Reset Link"" button."
+,,,,2. Browser is open and navigated to the forgot password page.,,
+Test Management System,V1.0,Forgot Password,Verify the form submission with a valid email.,1. User is not logged in.,1. Enter a valid email.,"1. A success message should be displayed: ""Reset link sent to your email."""
+,,,,2. Valid email is available.,"2. Click ""Send Reset Link"".",2. The user should be redirected to the appropriate page.
+Test Management System,V1.0,Forgot Password,Verify the form submission with an invalid email format.,1. User is not logged in.,1. Enter an invalid email.,"1. An error message should be displayed: ""Invalid email format."""
+,,,,2. Invalid email format is available.,"2. Click ""Send Reset Link"".",
+Test Management System,V1.0,Forgot Password,Verify the form submission with an empty email field.,1. User is not logged in.,1. Leave the email field empty.,"1. An error message should be displayed: ""Email is required."""
+,,,,,"2. Click ""Send Reset Link"".",
+Test Management System,V1.0,Forgot Password,Verify the form submission with a non-existent email.,1. User is not logged in.,1. Enter a non-existent email.,"1. An error message should be displayed: ""Email not found."""
+,,,,2. Non-existent email is available.,"2. Click ""Send Reset Link"".",
+Test Management System,V1.0,Forgot Password,Verify that the error message is displayed when $_SESSION['error'] is set.,1. User is not logged in.,1. Open the forgot password page.,1. The error message should be displayed in a red alert box.
+,,,,2. $_SESSION['error'] is set.,,
+Test Management System,V1.0,Forgot Password,Verify that the success message is displayed when $_SESSION['success'] is set.,1. User is not logged in.,1. Open the forgot password page.,1. The success message should be displayed in a green alert box.
+,,,,2. $_SESSION['success'] is set.,,
+Test Management System,V1.0,Forgot Password,Verify the responsiveness of the page on different screen sizes.,1. User is not logged in.,1. Open the page on a desktop.,1. The page should be responsive and display correctly on both desktop and mobile devices.
+,,,,2. Browser is open and navigated to the forgot password page.,2. Resize the browser to mobile size.,
+Test Management System,V1.0,Reset Password,"Verify that the ""Reset Password"" page loads correctly with a valid token.",1. User is not logged in.,1. Open the reset password page with a valid token.,"1. The page should load with a form containing a new password input field and a ""Reset Password"" button."
+,,,,2. A valid reset token is available.,,
+Test Management System,V1.0,Reset Password,Verify that the page redirects with an error for an invalid token.,1. User is not logged in.,1. Open the reset password page with an invalid token.,"1. The user should be redirected to forgot_password.php with an error message: ""Invalid or expired token."""
+,,,,2. An invalid reset token is provided.,,
+Test Management System,V1.0,Reset Password,Verify that the page redirects with an error if no token is provided.,1. User is not logged in.,1. Open the reset password page without a token.,"1. The user should be redirected to forgot_password.php with an error message: ""Invalid password reset link."""
+,,,,2. No reset token is provided.,,
+Test Management System,V1.0,Reset Password,Verify the form submission with a valid new password.,1. User is not logged in.,1. Enter a valid new password.,1. The password should be updated in the database.
+,,,,2. A valid reset token is available.,"2. Click ""Reset Password"".","2. The user should be redirected to login.php with a success message: ""Password has been reset successfully."""
+Test Management System,V1.0,Reset Password,Verify that the reset token is deleted after a successful password reset.,1. User is not logged in.,1. Enter a valid new password.,1. The reset token should be deleted from the database.
+,,,,2. A valid reset token is available.,"2. Click ""Reset Password"".",
+Test Management System,V1.0,Reset Password,Verify that the form submission fails with an empty password field.,1. User is not logged in.,1. Leave the password field empty.,"1. The form should not submit, and an error message should be displayed: ""New Password is required."""
+,,,,2. A valid reset token is available.,"2. Click ""Reset Password"".",
+Test Management System,V1.0,Reset Password,Verify that the password is hashed using Bcrypt before storing in the database.,1. User is not logged in.,1. Enter a valid new password.,1. The new password should be hashed using Bcrypt before being stored in the database.
+,,,,2. A valid reset token is available.,"2. Click ""Reset Password"".",
+Test Management System,V1.0,Reset Password,Verify the responsiveness of the page on different screen sizes.,1. User is not logged in.,1. Open the page on a desktop.,1. The page should be responsive and display correctly on both desktop and mobile devices
+,,,,2. A valid reset token is available.,2. Resize the browser to mobile size.,

@@ -2,7 +2,7 @@
 session_start();
 if (isset($_SESSION['user'])) {
     session_regenerate_id(true); // Prevent session fixation
-    header("Location: home.php");
+    header("Location: summary.php");
     exit();
 }
 ?>

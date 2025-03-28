@@ -99,15 +99,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
+        /* Wrapper to hold both sidebar and content */
         .wrapper {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             padding: 20px;
         }
 
+        /* Sidebar styles */
         .sidebar-container {
             width: 200px;
             height: 100vh;
@@ -121,8 +123,57 @@ $current_page = basename($_SERVER['PHP_SELF']);
             left: 20px;
             top: 20px;
             bottom: 20px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
 
+        .sidebar-container.collapsed {
+            transform: translateX(-240px);
+        }
+
+        .sidebar-container.show {
+            transform: translateX(0);
+        }
+
+        /* Content container */
+        .content-container {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            min-height: 100vh;
+            margin-left: 220px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .content-container.expanded {
+            margin-left: 20px;
+        }
+
+        /* Sidebar toggle button */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            left: 3px;
+            top: 20px;
+            z-index: 1050;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Sidebar Links */
         .sidebar a {
             display: block;
             padding: 10px;
@@ -137,33 +188,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
             background-color: #007bff;
             color: #fff;
         }
-        
         .sidebar a i {
             margin-right: 10px;
         }
 
-        .content-container {
-            flex: 1;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            height: 100vh;
-            margin-left: 220px;
-            overflow-y: auto;
-        }
-        
+        /* Admin section */
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
-        }
-        
-        .admin-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background-color 0.3s;
         }
 
+        .admin-section h4:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        .admin-section {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        /* User Info */
         .user-info {
             text-align: center;
             margin-bottom: 20px;
@@ -180,11 +230,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
             color: #333;
         }
 
+        .admin-links {
+            display: none;
+        }
+
+        /* Form styles */
         .form-container {
             max-width: 800px;
-            margin-left: 30px;
+           
+            padding: 20px;
         }
-        
+
         .btn-primary {
             background-color: #007bff;
             border: none;
@@ -198,12 +254,86 @@ $current_page = basename($_SERVER['PHP_SELF']);
             display: none;
             margin-top: 15px;
         }
-    </style>
+
+        /* Responsive styles */
+        @media (max-width: 767.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            .form-container {
+                padding: 15px;
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 1199.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            .form-container {
+                padding: 20px;
+            }
+        }
+        @media (min-width: 1200px) {
+    .form-container {
+        padding: 20px 0;
+        margin-left: 0;
+        max-width: 100%;
+    }
+    .form-container .form-label {
+        text-align: left;
+        margin-left: 0;
+    }
+    .form-container .form-control,
+    .form-container .form-check {
+        text-align: left;
+        margin-left: 0;
+        width: 100%;
+    }
+    .form-container .btn-primary {
+        margin-left: 0;
+    }
+    /* Specific fix for the checkbox */
+    .form-check {
+        display: flex;
+        align-items: center;
+    }
+    .form-check-input {
+        position: relative;
+        margin-top: 0;
+        margin-right: 0.5em;
+    }
+} 
+       
+       
+       </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div class="wrapper">
         <!-- Sidebar -->
-        <div class="sidebar-container">
+        <div class="sidebar-container" id="sidebarContainer">
             <!-- User Info Section -->
             <div class="user-info">
                 <i class="fas fa-user"></i>
@@ -248,7 +378,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
 
         <!-- Main Content -->
-        <div class="content-container">
+        <div class="content-container" id="contentContainer">
             <h4 class="text-dark mb-4">Add Employee</h4>
             <div class="alert" id="status-message" role="alert"></div>
             <div class="form-container">
@@ -305,6 +435,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Session timeout in milliseconds (5 minutes)
         const sessionTimeout = 5 * 60 * 1000;
@@ -351,6 +482,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
         }
 
         $(document).ready(function() {
+            // Sidebar toggle
+            $('#sidebarToggle').click(function() {
+                $('#sidebarContainer').toggleClass('show');
+                $('#contentContainer').toggleClass('expanded');
+            });
+
+            // Close sidebar when clicking outside on mobile/tablet
+            $(document).click(function(e) {
+                if ($(window).width() < 1200) {
+                    if (!$(e.target).closest('#sidebarContainer').length && 
+                        !$(e.target).is('#sidebarToggle') && 
+                        $('#sidebarContainer').hasClass('show')) {
+                        $('#sidebarContainer').removeClass('show');
+                        $('#contentContainer').addClass('expanded');
+                    }
+                }
+            });
+
+            // Handle window resize
+            $(window).resize(function() {
+                if ($(window).width() >= 1200) {
+                    $('#sidebarContainer').removeClass('show');
+                    $('#contentContainer').removeClass('expanded');
+                }
+            });
+
             // Log client-side page load
             $.ajax({
                 url: 'log_api.php',

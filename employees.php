@@ -99,15 +99,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
+        /* Wrapper to hold both sidebar and content */
         .wrapper {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             padding: 20px;
         }
 
+        /* Sidebar styles */
         .sidebar-container {
             width: 200px;
             height: 100vh;
@@ -121,8 +123,57 @@ $current_page = basename($_SERVER['PHP_SELF']);
             left: 20px;
             top: 20px;
             bottom: 20px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
 
+        .sidebar-container.collapsed {
+            transform: translateX(-240px);
+        }
+
+        .sidebar-container.show {
+            transform: translateX(0);
+        }
+
+        /* Content container */
+        .content-container {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            min-height: 100vh;
+            margin-left: 220px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .content-container.expanded {
+            margin-left: 20px;
+        }
+
+        /* Sidebar toggle button */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            left: 3px;
+            top: 20px;
+            z-index: 1050;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Sidebar Links */
         .sidebar a {
             display: block;
             padding: 10px;
@@ -137,33 +188,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
             background-color: #007bff;
             color: #fff;
         }
-
         .sidebar a i {
             margin-right: 10px;
         }
 
-        .content-container {
-            flex: 1;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            height: 100vh;
-            margin-left: 220px;
-            overflow-y: auto;
-        }
-
+        /* Admin section */
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .admin-section h4:hover {
+            background-color: #007bff;
+            color: #fff;
         }
 
         .admin-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
         }
 
+        /* User Info */
         .user-info {
             text-align: center;
             margin-bottom: 20px;
@@ -180,6 +230,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
             color: #333;
         }
 
+        .admin-links {
+            display: none;
+        }
+
+        /* Table styles */
         .table th {
             background-color: #007bff;
             color: white;
@@ -196,6 +251,40 @@ $current_page = basename($_SERVER['PHP_SELF']);
             background-color: #f1f1f1;
         }
 
+        /* Employee cards for mobile/tablet */
+        .employee-cards {
+            display: none;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .employee-card {
+            width: 100%;
+            max-width: 350px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card-field {
+            margin-bottom: 10px;
+        }
+
+        .card-field strong {
+            display: inline-block;
+            width: 100px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* Add employee button */
         .add-employee-btn {
             position: fixed;
             bottom: 20px;
@@ -217,15 +306,85 @@ $current_page = basename($_SERVER['PHP_SELF']);
             background-color: #0056b3;
         }
 
-        .admin-links {
-            display: none;
+        /* Responsive styles */
+        @media (max-width: 767.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            .add-employee-btn {
+            right: 40px;
+            }
+            /* Hide table on mobile, show cards */
+            .table-responsive {
+                display: none;
+            }
+            .employee-cards {
+                display: flex;
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 1199px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            
+            /* Show both table and cards on tablet */
+            .table-responsive {
+                display: none;
+            }
+            .employee-cards {
+                display: flex;
+            }
+            .add-employee-btn {
+            right: 40px;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .sidebar-toggle {
+                display: none;
+            }
+            
+            /* Show only table on desktop */
+            .table-responsive {
+                display: block;
+            }
+            .employee-cards {
+                display: none;
+            }
+            .add-employee-btn {
+            right: 40px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div class="wrapper">
         <!-- Sidebar -->
-        <div class="sidebar-container">
+        <div class="sidebar-container" id="sidebarContainer">
             <div class="user-info">
                 <i class="fas fa-user"></i>
                 <h4><?php echo htmlspecialchars($_SESSION['user']); ?></h4>
@@ -268,8 +427,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
 
         <!-- Main Content -->
-        <div class="content-container">
+        <div class="content-container" id="contentContainer">
             <h4 class="mb-4">Employees</h4>
+            
+            <!-- Table for desktop view -->
             <div class="table-responsive">
                 <table class="table table-bordered table-hover" id="employeesTable">
                     <thead>
@@ -288,8 +449,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Cards for mobile view -->
+            <div class="employee-cards" id="employeeCards">
+                <!-- Employee cards will be populated here by JavaScript -->
+            </div>
         </div>
     </div>
+    
     <a href="add_employees.php" class="btn add-employee-btn">+</a>
     
     <!-- Session Timeout Popup -->
@@ -310,6 +477,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Session timeout in milliseconds (5 minutes)
         const sessionTimeout = 5 * 60 * 1000;
@@ -319,6 +487,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
         setTimeout(() => {
             const sessionPopup = new bootstrap.Modal(document.getElementById('sessionPopup'));
             sessionPopup.show();
+            
+            // Log session timeout warning
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: 'session_timeout_warning',
+                    description: 'Session timeout warning shown on Employees page'
+                },
+                dataType: 'json'
+            });
         }, sessionTimeout - popupTime);
 
         // Logout the user after session timeout
@@ -329,6 +509,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
         function toggleAdminLinks() {
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'block' ? 'none' : 'block';
+            
+            // Log admin links toggle
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: 'admin_links_toggle',
+                    description: 'Toggled admin links visibility'
+                },
+                dataType: 'json'
+            });
         }
 
         function fetchEmployees() {
@@ -343,14 +535,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     
                     if (response && response.status === 'success' && Array.isArray(response.data)) {
                         const tbody = $('#employeesTable tbody');
+                        const cardsContainer = $('#employeeCards');
                         tbody.empty();
+                        cardsContainer.empty();
                         
                         if (response.data.length === 0) {
                             tbody.append('<tr><td colspan="7" class="text-center">No employees found</td></tr>');
+                            cardsContainer.append('<div class="text-center w-100">No employees found</div>');
                             return;
                         }
                         
                         response.data.forEach(employee => {
+                            // Table row
                             const row = `
                                 <tr>
                                     <td>${employee.emp_id}</td>
@@ -370,6 +566,27 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                 </tr>
                             `;
                             tbody.append(row);
+                            
+                            // Card for mobile view
+                            const card = `
+                                <div class="employee-card">
+                                    <div class="card-field"><strong>ID:</strong> ${employee.emp_id}</div>
+                                    <div class="card-field"><strong>Name:</strong> ${employee.emp_name}</div>
+                                    <div class="card-field"><strong>Email:</strong> ${employee.email}</div>
+                                    <div class="card-field"><strong>Mobile:</strong> ${employee.mobile_number}</div>
+                                    <div class="card-field"><strong>Designation:</strong> ${employee.designation}</div>
+                                    <div class="card-field"><strong>Admin:</strong> ${employee.is_admin == 1 ? 'Yes' : 'No'}</div>
+                                    <div class="card-actions">
+                                        <a href="edit_employees.php?id=${employee.emp_id}" class="btn btn-sm btn-primary">Edit</a>
+                                        <a href="delete_employees.php?id=${employee.emp_id}" 
+                                           class="btn btn-sm btn-danger" 
+                                           onclick="return confirm('Are you sure you want to delete this employee?');">
+                                           Delete
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                            cardsContainer.append(card);
                         });
                     } else {
                         console.error("Invalid response format or empty data");
@@ -379,6 +596,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                     ${response.message || 'Invalid data format received from server'}
                                 </td>
                             </tr>
+                        `);
+                        $('#employeeCards').html(`
+                            <div class="text-center text-danger w-100">
+                                ${response.message || 'Invalid data format received from server'}
+                            </div>
                         `);
                     }
                 },
@@ -392,6 +614,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                 Failed to load employees. Check console for details.
                             </td>
                         </tr>
+                    `);
+                    $('#employeeCards').html(`
+                        <div class="text-center text-danger w-100">
+                            Failed to load employees. Check console for details.
+                        </div>
                     `);
                 }
             });
@@ -419,6 +646,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
         }
 
         $(document).ready(function() {
+            // Sidebar toggle
+            $('#sidebarToggle').click(function() {
+                $('#sidebarContainer').toggleClass('show');
+                $('#contentContainer').toggleClass('expanded');
+            });
+
+            // Close sidebar when clicking outside on mobile/tablet
+            $(document).click(function(e) {
+                if ($(window).width() < 992) {
+                    if (!$(e.target).closest('#sidebarContainer').length && 
+                        !$(e.target).is('#sidebarToggle') && 
+                        $('#sidebarContainer').hasClass('show')) {
+                        $('#sidebarContainer').removeClass('show');
+                        $('#contentContainer').addClass('expanded');
+                    }
+                }
+            });
+
+            // Handle window resize
+            $(window).resize(function() {
+                if ($(window).width() >= 992) {
+                    $('#sidebarContainer').removeClass('show');
+                    $('#contentContainer').removeClass('expanded');
+                }
+            });
+
             // Initialize with hidden admin links
             if (document.querySelector('.admin-section')) {
                 document.querySelector('.admin-links').style.display = 'none';
@@ -426,6 +679,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
             
             // Load employees initially
             fetchEmployees();
+            
+            // Log page load
+            $.ajax({
+                url: 'log_api.php',
+                type: 'POST',
+                data: {
+                    action: 'log_client_action',
+                    action_type: 'page_load',
+                    description: 'Loaded Employees page'
+                },
+                dataType: 'json'
+            });
         });
     </script>
 </body>

@@ -48,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->bind_param("ssi", $email, $token, $expiry);
         $stmt->execute();
 
-        $reset_link = "http://localhost/testing_website/reset_password.php?token=$token";
+        $reset_link = "http://localhost/testing_website/reset_password.php?token=" . urlencode($token);
 
         $mail = new PHPMailer(true);
         try {

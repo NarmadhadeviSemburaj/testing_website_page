@@ -80,7 +80,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SERVER['HTTP_USER_AGENT'] // user_agent
         );
 
-        header("Location: home.php");
+        header("Location: summary.php");
         exit();
     } else {
         // Log failed login attempt

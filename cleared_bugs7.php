@@ -80,15 +80,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
+        /* Wrapper to hold both sidebar and content */
         .wrapper {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             padding: 20px;
         }
 
+        /* Sidebar styles */
         .sidebar-container {
             width: 200px;
             height: 100vh;
@@ -102,8 +104,57 @@ $current_page = basename($_SERVER['PHP_SELF']);
             left: 20px;
             top: 20px;
             bottom: 20px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
 
+        .sidebar-container.collapsed {
+            transform: translateX(-240px);
+        }
+
+        .sidebar-container.show {
+            transform: translateX(0);
+        }
+
+        /* Content container */
+        .content-container {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            min-height: 100vh;
+            margin-left: 220px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .content-container.expanded {
+            margin-left: 20px;
+        }
+
+        /* Sidebar toggle button */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            left: 3px;
+            top: 20px;
+            z-index: 1050;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Sidebar Links */
         .sidebar a {
             display: block;
             padding: 10px;
@@ -118,33 +169,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
             background-color: #007bff;
             color: #fff;
         }
-        
         .sidebar a i {
             margin-right: 10px;
         }
 
-        .content-container {
-            flex: 1;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            height: 100vh;
-            margin-left: 220px;
-            overflow-y: auto;
-        }
-        
+        /* Admin section */
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
-        }
-        
-        .admin-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background-color 0.3s;
         }
 
+        .admin-section h4:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        .admin-section {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        /* User Info */
         .user-info {
             text-align: center;
             margin-bottom: 20px;
@@ -161,15 +211,25 @@ $current_page = basename($_SERVER['PHP_SELF']);
             color: #333;
         }
 
+        .admin-links {
+            display: none;
+        }
+
         /* Bug Card Styling */
         .bug-card {
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            background-color: #fff;
-            padding: 15px;
-        }
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    background-color: #fff;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative; /* Add this */
+    padding-bottom: 40px; /* Add padding to make space for the button */
+}
 
         .bug-card-header {
             display: flex;
@@ -181,6 +241,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         .bug-card-header h5 {
             margin: 0;
             font-size: 16px;
+            flex: 1;
         }
 
         .bug-type {
@@ -190,6 +251,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             font-size: 12px;
             font-weight: bold;
             color: white;
+            margin-left: 10px;
         }
 
         .bug-type-critical { background-color: #dc3545; }
@@ -197,9 +259,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
         .bug-type-low { background-color: #ffc107; color: #212529; }
 
         .bug-card-body {
-            display: flex;
-            flex-direction: column;
-        }
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative; /* Add this */
+    min-height: 200px; /* Set a minimum height */
+}
 
         .bug-info {
             margin-bottom: 10px;
@@ -215,23 +280,33 @@ $current_page = basename($_SERVER['PHP_SELF']);
         .bug-info p {
             margin: 0;
             overflow-wrap: break-word;
+            padding-left: 20px;
         }
 
         .expandable-section {
-            display: none;
-            margin-top: 10px;
-        }
+    display: none;
+    margin-top: 10px;
+    padding-bottom: 30px; /* Add padding to prevent content from being hidden behind the button */
+}
 
-        .expandable-section.expanded {
-            display: block;
-        }
+.expandable-section.expanded {
+    display: block;
+}
 
         .view-more-btn {
-            color: #007bff;
-            cursor: pointer;
-            text-align: center;
-            margin-top: 10px;
-        }
+    color: #007bff;
+    cursor: pointer;
+    text-align: center;
+    margin-top: auto; /* Change from margin-top: 10px to auto */
+    padding: 10px 5px; /* Increase padding */
+    border-top: 1px solid #eee;
+    position: absolute; /* Add this */
+    bottom: 0; /* Add this */
+    left: 0; /* Add this */
+    right: 0; /* Add this */
+    background: white; /* Add white background */
+    border-radius: 0 0 10px 10px; /* Match card's border radius */
+}
 
         .view-more-btn:hover {
             text-decoration: underline;
@@ -252,6 +327,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             border-radius: 10px;
             font-size: 12px;
             font-weight: bold;
+            margin-left: 10px;
         }
 
         .empty-state {
@@ -259,31 +335,107 @@ $current_page = basename($_SERVER['PHP_SELF']);
             padding: 40px 0;
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .content-container {
-                margin-left: 0;
-                padding-top: 80px;
-            }
-            
+        .bug-card-columns {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px;
+        }
+
+        .bug-card-column {
+            flex: 1;
+            min-width: 250px;
+            padding: 0 10px;
+        }
+
+        .bug-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 10px;
+        }
+
+        /* Add space between cards */
+        .bug-cards-container {
+            gap: 20px;
+        }
+
+        .view-attachment-btn {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            color: #007bff;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .view-attachment-btn:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 767.98px) {
             .sidebar-container {
-                width: 100%;
-                height: auto;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                z-index: 1000;
-                margin-right: 0;
-                border-radius: 0;
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            .col-md-6, .col-lg-4 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 1199.98px) {
+            .col-lg-4 {
+                flex: 0 0 calc(50% - 10px);
+                max-width: calc(50% - 10px);
+            }
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .col-lg-4 {
+                flex: 0 0 calc(33.333333% - 14px);
+                max-width: calc(33.333333% - 14px);
+            }
+            .sidebar-toggle {
+                display: none;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div class="wrapper">
         <!-- Sidebar -->
-        <div class="sidebar-container">
+        <div class="sidebar-container" id="sidebarContainer">
             <div class="user-info">
                 <i class="fas fa-user"></i>
                 <h4><?php echo htmlspecialchars($_SESSION['user']); ?></h4>
@@ -324,7 +476,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
 
         <!-- Main Content -->
-        <div class="content-container">
+        <div class="content-container" id="contentContainer">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4>Cleared Bug Reports</h4>
                 <a href="bug_details.php" class="btn btn-primary">
@@ -365,10 +517,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         <div class="col-md-6 col-lg-4">
                             <div class="bug-card">
                                 <div class="bug-card-header">
-								<i class="fas fa-bug text-primary me-2"></i>
                                     <h5><?= htmlspecialchars($row['Module_name']) ?></h5>
                                     <div>
-                                        <span class="<?= $bugTypeClass ?>"><?= htmlspecialchars($row['bug_type']) ?></span>
+                                        <span class="bug-type <?= $bugTypeClass ?>"><?= htmlspecialchars($row['bug_type']) ?></span>
                                         <span class="cleared-badge">Cleared</span>
                                     </div>
                                 </div>
@@ -447,7 +598,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                     </div>
 
                                     <div class="view-more-btn" onclick="toggleExpandableSection('<?= $row['id'] ?>')">
-                                        View More <i class="fas fa-chevron-down"></i>
+                                        <span id="view-more-text-<?= $row['id'] ?>">View More</span> <i id="view-more-icon-<?= $row['id'] ?>" class="fas fa-chevron-down"></i>
                                     </div>
                                 </div>
                             </div>
@@ -501,14 +652,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Toggle expandable section
+        // Toggle expandable section - fixed version
         function toggleExpandableSection(id) {
             const section = document.getElementById('expandable_' + id);
-            const btn = section.closest('.bug-card-body').querySelector('.view-more-btn');
+            const textElement = document.getElementById('view-more-text-' + id);
+            const iconElement = document.getElementById('view-more-icon-' + id);
             
             section.classList.toggle('expanded');
             if (section.classList.contains('expanded')) {
-                btn.innerHTML = 'View Less <i class="fas fa-chevron-up"></i>';
+                textElement.textContent = 'View Less';
+                iconElement.classList.remove('fa-chevron-down');
+                iconElement.classList.add('fa-chevron-up');
                 
                 // Log section expansion
                 $.ajax({
@@ -522,7 +676,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     }
                 });
             } else {
-                btn.innerHTML = 'View More <i class="fas fa-chevron-down"></i>';
+                textElement.textContent = 'View More';
+                iconElement.classList.remove('fa-chevron-up');
+                iconElement.classList.add('fa-chevron-down');
             }
         }
 
@@ -640,7 +796,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                 <div class="bug-card-header">
                                     <h5>${bug.Module_name}</h5>
                                     <div>
-                                        <span class="${bugTypeClass}">${bug.bug_type}</span>
+                                        <span class="bug-type ${bugTypeClass}">${bug.bug_type}</span>
                                         <span class="cleared-badge">Cleared</span>
                                     </div>
                                 </div>
@@ -661,11 +817,54 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                     </div>
 
                                     <div class="expandable-section" id="expandable_${bug.id}">
-                                        <!-- Additional bug details here -->
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="bug-info">
+                                                    <label><i class="fas fa-tag"></i> Product</label>
+                                                    <p>${bug.Product_name}</p>
+                                                </div>
+                                                <div class="bug-info">
+                                                    <label><i class="fas fa-mobile-alt"></i> Device</label>
+                                                    <p>${bug.device_name}</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="bug-info">
+                                                    <label><i class="fas fa-code-branch"></i> Version</label>
+                                                    <p>${bug.Version}</p>
+                                                </div>
+                                                <div class="bug-info">
+                                                    <label><i class="fab fa-android"></i> Android Version</label>
+                                                    <p>${bug.android_version}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="bug-info">
+                                            <label><i class="fas fa-list-ol"></i> Test Steps</label>
+                                            <p>${bug.test_steps}</p>
+                                        </div>
+                                        
+                                        <div class="bug-info">
+                                            <label><i class="fas fa-check-circle"></i> Expected Result</label>
+                                            <p>${bug.expected_results}</p>
+                                        </div>
+                                        
+                                        <div class="bug-info">
+                                            <label><i class="fas fa-times-circle"></i> Actual Result</label>
+                                            <p>${bug.actual_result}</p>
+                                        </div>
+                                        
+                                        ${bug.file_attachment ? `
+                                        <div class="bug-info">
+                                            <label><i class="fas fa-paperclip"></i> Attachment</label>
+                                            ${getAttachmentLink(bug.file_attachment)}
+                                        </div>
+                                        ` : ''}
                                     </div>
 
                                     <div class="view-more-btn" onclick="toggleExpandableSection('${bug.id}')">
-                                        View More <i class="fas fa-chevron-down"></i>
+                                        <span id="view-more-text-${bug.id}">View More</span> <i id="view-more-icon-${bug.id}" class="fas fa-chevron-down"></i>
                                     </div>
                                 </div>
                             </div>
@@ -681,8 +880,42 @@ $current_page = basename($_SERVER['PHP_SELF']);
             }
         }
 
+        function getAttachmentLink(file_url) {
+            const file_extension = file_url.split('.').pop().toLowerCase();
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file_extension)) {
+                return `<a href="${file_url}" class="view-attachment-btn" target="_blank"><i class="fas fa-eye"></i> View Image</a>`;
+            } else if (['mp4', 'webm', 'ogg'].includes(file_extension)) {
+                return `<a href="${file_url}" class="view-attachment-btn" target="_blank"><i class="fas fa-play"></i> View Video</a>`;
+            } else {
+                return `<a href="${file_url}" class="view-attachment-btn" target="_blank"><i class="fas fa-file"></i> View File</a>`;
+            }
+        }
+
         // Initialize the page
         $(document).ready(function() {
+            // Sidebar toggle functionality
+            $('#sidebarToggle').click(function() {
+                $('#sidebarContainer').toggleClass('show');
+            });
+
+            // Close sidebar when clicking outside on mobile
+            $(document).click(function(e) {
+                if ($(window).width() < 1200) {
+                    if (!$(e.target).closest('#sidebarContainer').length && 
+                        !$(e.target).is('#sidebarToggle') && 
+                        $('#sidebarContainer').hasClass('show')) {
+                        $('#sidebarContainer').removeClass('show');
+                    }
+                }
+            });
+
+            // Handle window resize
+            $(window).resize(function() {
+                if ($(window).width() >= 1200) {
+                    $('#sidebarContainer').removeClass('show');
+                }
+            });
+
             // Log page load
             $.ajax({
                 url: 'log_api.php',

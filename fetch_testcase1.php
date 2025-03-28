@@ -4,6 +4,7 @@ session_start();
 
 // Include logging functions
 include 'log_api.php';
+include 'db_config.php';
 
 // Log API request initiation
 logUserAction(
@@ -20,8 +21,7 @@ logUserAction(
     $_SERVER['HTTP_USER_AGENT']
 );
 
-// Database connection
-$conn = new mysqli("localhost", "root", "", "testing_db");
+
 if ($conn->connect_error) {
     logUserAction(
         $_SESSION['emp_id'] ?? null,

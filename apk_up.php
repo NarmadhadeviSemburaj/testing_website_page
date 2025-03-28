@@ -94,21 +94,23 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Your existing CSS styles */
+        /* Updated CSS with responsive sidebar */
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
+        /* Wrapper to hold both sidebar and content */
         .wrapper {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             padding: 20px;
         }
 
+        /* Sidebar styles */
         .sidebar-container {
             width: 200px;
             height: 100vh;
@@ -122,8 +124,57 @@ $current_page = basename($_SERVER['PHP_SELF']);
             left: 20px;
             top: 20px;
             bottom: 20px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
 
+        .sidebar-container.collapsed {
+            transform: translateX(-240px);
+        }
+
+        .sidebar-container.show {
+            transform: translateX(0);
+        }
+
+        /* Content container */
+        .content-container {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            min-height: 100vh;
+            margin-left: 220px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .content-container.expanded {
+            margin-left: 20px;
+        }
+
+        /* Sidebar toggle button */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            left: 3px;
+            top: 20px;
+            z-index: 1050;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Sidebar Links */
         .sidebar a {
             display: block;
             padding: 10px;
@@ -138,33 +189,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
             background-color: #007bff;
             color: #fff;
         }
-
         .sidebar a i {
             margin-right: 10px;
         }
 
-        .content-container {
-            flex: 1;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            height: 100vh;
-            margin-left: 220px;
-            overflow-y: auto;
-        }
-
+        /* Admin section */
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .admin-section h4:hover {
+            background-color: #007bff;
+            color: #fff;
         }
 
         .admin-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
         }
 
+        /* User Info */
         .user-info {
             text-align: center;
             margin-bottom: 20px;
@@ -230,7 +280,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         .createfolder {
             position: absolute;
             top: 30px;
-            right: 50px;
+            right: 30px;
             z-index: 1000;
             background-color: #007bff;
             border: none;
@@ -271,12 +321,63 @@ $current_page = basename($_SERVER['PHP_SELF']);
             font-size: 12px;
             text-align: center;
         }
+
+        /* Responsive styles */
+        @media (max-width: 767.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            .createfolder {
+                right: 50px;
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 1199.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            .createfolder {
+                right: 50px;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .sidebar-toggle {
+                display: none;
+            }
+            .createfolder {
+                right: 50px;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div class="wrapper">
         <!-- Sidebar -->
-        <div class="sidebar-container">
+        <div class="sidebar-container" id="sidebarContainer">
             <!-- User Info Section -->
             <div class="user-info">
                 <i class="fas fa-user"></i>
@@ -321,7 +422,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
 
         <!-- Main Content -->
-        <div class="content-container">
+        <div class="content-container" id="contentContainer">
             <!-- Header Section with Create Folder Button -->
             <div class="header-section">
                 <h4 class="text-dark mb-0">APK Admin</h4>
@@ -370,7 +471,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <div id="message"></div>
         </div>
     </div>
-	
+    
     <!-- Session Timeout Popup -->
     <div id="sessionPopup" class="modal fade" tabindex="-1">
         <div class="modal-dialog">
@@ -390,6 +491,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Session timeout in milliseconds (5 minutes)
         const sessionTimeout = 5 * 60 * 1000;
@@ -454,88 +556,265 @@ $current_page = basename($_SERVER['PHP_SELF']);
             });
         }
 
-        // Handle Create Folder Form Submission
-        document.getElementById('createFolderFormData').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            formData.append('action', 'create_folder');
-            
-            // Log folder creation attempt
-            $.ajax({
-                url: 'log_api.php',
-                type: 'POST',
-                data: {
-                    action: 'log_client_action',
-                    action_type: 'folder_creation_attempt',
-                    description: 'Attempting to create folder: ' + formData.get('folder_name')
-                },
-                dataType: 'json'
+        // Sidebar toggle functionality
+        $(document).ready(function() {
+            // Sidebar toggle
+            $('#sidebarToggle').click(function() {
+                $('#sidebarContainer').toggleClass('show');
+                $('#contentContainer').toggleClass('expanded');
             });
 
-            fetch('apk_api_up.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'error' && data.message === 'Folder already exists. Overwrite?') {
-                    const overwriteForm = `
-                        <div class="alert alert-danger">${data.message}</div>
-                        <form id="overwriteFolderForm" class="mt-3">
-                            <input type="hidden" name="folder_name" value="${formData.get('folder_name')}">
-                            <input type="hidden" name="overwrite" value="yes">
-                            <button type="submit" class="btn btn-warning">Overwrite</button>
-                        </form>
-                    `;
-                    document.getElementById('message').innerHTML = overwriteForm;
+            // Close sidebar when clicking outside on mobile/tablet
+            $(document).click(function(e) {
+                if ($(window).width() < 1200) {
+                    if (!$(e.target).closest('#sidebarContainer').length && 
+                        !$(e.target).is('#sidebarToggle') && 
+                        $('#sidebarContainer').hasClass('show')) {
+                        $('#sidebarContainer').removeClass('show');
+                        $('#contentContainer').addClass('expanded');
+                    }
+                }
+            });
 
-                    // Log folder exists warning
-                    $.ajax({
-                        url: 'log_api.php',
-                        type: 'POST',
-                        data: {
-                            action: 'log_client_action',
-                            action_type: 'folder_exists_warning',
-                            description: 'Folder already exists: ' + formData.get('folder_name')
-                        },
-                        dataType: 'json'
-                    });
+            // Handle window resize
+            $(window).resize(function() {
+                if ($(window).width() >= 1200) {
+                    $('#sidebarContainer').removeClass('show');
+                    $('#contentContainer').removeClass('expanded');
+                }
+            });
 
-                    // Handle Overwrite Form Submission
-                    document.getElementById('overwriteFolderForm').addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        const overwriteFormData = new FormData(this);
-                        overwriteFormData.append('action', 'create_folder');
-                        
-                        // Log folder overwrite attempt
+            // Handle Create Folder Form Submission
+            document.getElementById('createFolderFormData').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                formData.append('action', 'create_folder');
+                
+                // Log folder creation attempt
+                $.ajax({
+                    url: 'log_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'log_client_action',
+                        action_type: 'folder_creation_attempt',
+                        description: 'Attempting to create folder: ' + formData.get('folder_name')
+                    },
+                    dataType: 'json'
+                });
+
+                fetch('apk_api_up.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error' && data.message === 'Folder already exists. Overwrite?') {
+                        const overwriteForm = `
+                            <div class="alert alert-danger">${data.message}</div>
+                            <form id="overwriteFolderForm" class="mt-3">
+                                <input type="hidden" name="folder_name" value="${formData.get('folder_name')}">
+                                <input type="hidden" name="overwrite" value="yes">
+                                <button type="submit" class="btn btn-warning">Overwrite</button>
+                            </form>
+                        `;
+                        document.getElementById('message').innerHTML = overwriteForm;
+
+                        // Log folder exists warning
                         $.ajax({
                             url: 'log_api.php',
                             type: 'POST',
                             data: {
                                 action: 'log_client_action',
-                                action_type: 'folder_overwrite_attempt',
-                                description: 'Attempting to overwrite folder: ' + overwriteFormData.get('folder_name')
+                                action_type: 'folder_exists_warning',
+                                description: 'Folder already exists: ' + formData.get('folder_name')
                             },
                             dataType: 'json'
                         });
 
-                        fetch('apk_api_up.php', {
-                            method: 'POST',
-                            body: overwriteFormData
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                document.getElementById('message').innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                                
-                                // Log successful folder overwrite
+                        // Handle Overwrite Form Submission
+                        document.getElementById('overwriteFolderForm').addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const overwriteFormData = new FormData(this);
+                            overwriteFormData.append('action', 'create_folder');
+                            
+                            // Log folder overwrite attempt
+                            $.ajax({
+                                url: 'log_api.php',
+                                type: 'POST',
+                                data: {
+                                    action: 'log_client_action',
+                                    action_type: 'folder_overwrite_attempt',
+                                    description: 'Attempting to overwrite folder: ' + overwriteFormData.get('folder_name')
+                                },
+                                dataType: 'json'
+                            });
+
+                            fetch('apk_api_up.php', {
+                                method: 'POST',
+                                body: overwriteFormData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    document.getElementById('message').innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                                    
+                                    // Log successful folder overwrite
+                                    $.ajax({
+                                        url: 'log_api.php',
+                                        type: 'POST',
+                                        data: {
+                                            action: 'log_client_action',
+                                            action_type: 'folder_overwrite_success',
+                                            description: 'Successfully overwrote folder: ' + overwriteFormData.get('folder_name')
+                                        },
+                                        dataType: 'json'
+                                    });
+                                    
+                                    setTimeout(() => location.reload(), 1000);
+                                } else {
+                                    document.getElementById('message').innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                                    
+                                    // Log folder overwrite failure
+                                    $.ajax({
+                                        url: 'log_api.php',
+                                        type: 'POST',
+                                        data: {
+                                            action: 'log_client_action',
+                                            action_type: 'folder_overwrite_failed',
+                                            description: 'Failed to overwrite folder: ' + overwriteFormData.get('folder_name') + ' - ' + data.message
+                                        },
+                                        dataType: 'json'
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                // Log AJAX error
                                 $.ajax({
                                     url: 'log_api.php',
                                     type: 'POST',
                                     data: {
                                         action: 'log_client_action',
-                                        action_type: 'folder_overwrite_success',
-                                        description: 'Successfully overwrote folder: ' + overwriteFormData.get('folder_name')
+                                        action_type: 'folder_overwrite_error',
+                                        description: 'Error during folder overwrite: ' + error.message
+                                    },
+                                    dataType: 'json'
+                                });
+                            });
+                        });
+                    } else if (data.status === 'success') {
+                        document.getElementById('message').innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                        
+                        // Log successful folder creation
+                        $.ajax({
+                            url: 'log_api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'log_client_action',
+                                action_type: 'folder_creation_success',
+                                description: 'Successfully created folder: ' + formData.get('folder_name')
+                            },
+                            dataType: 'json'
+                        });
+                        
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        document.getElementById('message').innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                        
+                        // Log folder creation failure
+                        $.ajax({
+                            url: 'log_api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'log_client_action',
+                                action_type: 'folder_creation_failed',
+                                description: 'Failed to create folder: ' + formData.get('folder_name') + ' - ' + data.message
+                            },
+                            dataType: 'json'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Log AJAX error
+                    $.ajax({
+                        url: 'log_api.php',
+                        type: 'POST',
+                        data: {
+                            action: 'log_client_action',
+                            action_type: 'folder_creation_error',
+                            description: 'Error during folder creation: ' + error.message
+                        },
+                        dataType: 'json'
+                    });
+                });
+            });
+
+            // Handle Upload APK Form Submission with progress tracking
+            document.getElementById('uploadApkForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const form = this;
+                const formData = new FormData(form);
+                formData.append('action', 'upload_apk');
+                
+                // Show progress bar
+                document.getElementById('progressContainer').style.display = 'block';
+                const progressBar = document.getElementById('progressBar');
+                const progressText = document.getElementById('progressText');
+                
+                // Log APK upload attempt
+                $.ajax({
+                    url: 'log_api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'log_client_action',
+                        action_type: 'apk_upload_attempt',
+                        description: 'Attempting to upload APK to folder: ' + formData.get('folder_select')
+                    },
+                    dataType: 'json'
+                });
+
+                const xhr = new XMLHttpRequest();
+                
+                // Progress event handler
+                xhr.upload.addEventListener('progress', function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = Math.round((e.loaded / e.total) * 100);
+                        progressBar.style.width = percentComplete + '%';
+                        progressBar.textContent = percentComplete + '%';
+                        progressText.textContent = `Uploading: ${percentComplete}%`;
+                        
+                        // Log upload progress periodically
+                        if (percentComplete % 25 === 0) {
+                            $.ajax({
+                                url: 'log_api.php',
+                                type: 'POST',
+                                data: {
+                                    action: 'log_client_action',
+                                    action_type: 'apk_upload_progress',
+                                    description: `APK upload progress: ${percentComplete}%`
+                                },
+                                dataType: 'json'
+                            });
+                        }
+                    }
+                });
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (data.status === 'success') {
+                                document.getElementById('message').innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                                
+                                // Log successful APK upload
+                                $.ajax({
+                                    url: 'log_api.php',
+                                    type: 'POST',
+                                    data: {
+                                        action: 'log_client_action',
+                                        action_type: 'apk_upload_success',
+                                        description: 'Successfully uploaded APK to folder: ' + formData.get('folder_select')
                                     },
                                     dataType: 'json'
                                 });
@@ -544,193 +823,43 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             } else {
                                 document.getElementById('message').innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
                                 
-                                // Log folder overwrite failure
+                                // Log APK upload failure
                                 $.ajax({
                                     url: 'log_api.php',
                                     type: 'POST',
                                     data: {
                                         action: 'log_client_action',
-                                        action_type: 'folder_overwrite_failed',
-                                        description: 'Failed to overwrite folder: ' + overwriteFormData.get('folder_name') + ' - ' + data.message
+                                        action_type: 'apk_upload_failed',
+                                        description: 'Failed to upload APK: ' + data.message
                                     },
                                     dataType: 'json'
                                 });
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            // Log AJAX error
+                        } catch (error) {
+                            document.getElementById('message').innerHTML = `<div class="alert alert-danger">Error processing response</div>`;
+                            
+                            // Log response parsing error
                             $.ajax({
                                 url: 'log_api.php',
                                 type: 'POST',
                                 data: {
                                     action: 'log_client_action',
-                                    action_type: 'folder_overwrite_error',
-                                    description: 'Error during folder overwrite: ' + error.message
-                                },
-                                dataType: 'json'
-                            });
-                        });
-                    });
-                } else if (data.status === 'success') {
-                    document.getElementById('message').innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                    
-                    // Log successful folder creation
-                    $.ajax({
-                        url: 'log_api.php',
-                        type: 'POST',
-                        data: {
-                            action: 'log_client_action',
-                            action_type: 'folder_creation_success',
-                            description: 'Successfully created folder: ' + formData.get('folder_name')
-                        },
-                        dataType: 'json'
-                    });
-                    
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    document.getElementById('message').innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
-                    
-                    // Log folder creation failure
-                    $.ajax({
-                        url: 'log_api.php',
-                        type: 'POST',
-                        data: {
-                            action: 'log_client_action',
-                            action_type: 'folder_creation_failed',
-                            description: 'Failed to create folder: ' + formData.get('folder_name') + ' - ' + data.message
-                        },
-                        dataType: 'json'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // Log AJAX error
-                $.ajax({
-                    url: 'log_api.php',
-                    type: 'POST',
-                    data: {
-                        action: 'log_client_action',
-                        action_type: 'folder_creation_error',
-                        description: 'Error during folder creation: ' + error.message
-                    },
-                    dataType: 'json'
-                });
-            });
-        });
-
-        // Handle Upload APK Form Submission with progress tracking
-        document.getElementById('uploadApkForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const form = this;
-            const formData = new FormData(form);
-            formData.append('action', 'upload_apk');
-            
-            // Show progress bar
-            document.getElementById('progressContainer').style.display = 'block';
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-            
-            // Log APK upload attempt
-            $.ajax({
-                url: 'log_api.php',
-                type: 'POST',
-                data: {
-                    action: 'log_client_action',
-                    action_type: 'apk_upload_attempt',
-                    description: 'Attempting to upload APK to folder: ' + formData.get('folder_select')
-                },
-                dataType: 'json'
-            });
-
-            const xhr = new XMLHttpRequest();
-            
-            // Progress event handler
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = Math.round((e.loaded / e.total) * 100);
-                    progressBar.style.width = percentComplete + '%';
-                    progressBar.textContent = percentComplete + '%';
-                    progressText.textContent = `Uploading: ${percentComplete}%`;
-                    
-                    // Log upload progress periodically
-                    if (percentComplete % 25 === 0) {
-                        $.ajax({
-                            url: 'log_api.php',
-                            type: 'POST',
-                            data: {
-                                action: 'log_client_action',
-                                action_type: 'apk_upload_progress',
-                                description: `APK upload progress: ${percentComplete}%`
-                            },
-                            dataType: 'json'
-                        });
-                    }
-                }
-            });
-            
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    try {
-                        const data = JSON.parse(xhr.responseText);
-                        if (data.status === 'success') {
-                            document.getElementById('message').innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                            
-                            // Log successful APK upload
-                            $.ajax({
-                                url: 'log_api.php',
-                                type: 'POST',
-                                data: {
-                                    action: 'log_client_action',
-                                    action_type: 'apk_upload_success',
-                                    description: 'Successfully uploaded APK to folder: ' + formData.get('folder_select')
-                                },
-                                dataType: 'json'
-                            });
-                            
-                            setTimeout(() => location.reload(), 1000);
-                        } else {
-                            document.getElementById('message').innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
-                            
-                            // Log APK upload failure
-                            $.ajax({
-                                url: 'log_api.php',
-                                type: 'POST',
-                                data: {
-                                    action: 'log_client_action',
-                                    action_type: 'apk_upload_failed',
-                                    description: 'Failed to upload APK: ' + data.message
+                                    action_type: 'apk_upload_error',
+                                    description: 'Error parsing upload response: ' + error.message
                                 },
                                 dataType: 'json'
                             });
                         }
-                    } catch (error) {
-                        document.getElementById('message').innerHTML = `<div class="alert alert-danger">Error processing response</div>`;
-                        
-                        // Log response parsing error
-                        $.ajax({
-                            url: 'log_api.php',
-                            type: 'POST',
-                            data: {
-                                action: 'log_client_action',
-                                action_type: 'apk_upload_error',
-                                description: 'Error parsing upload response: ' + error.message
-                            },
-                            dataType: 'json'
-                        });
+                        // Hide progress bar
+                        document.getElementById('progressContainer').style.display = 'none';
                     }
-                    // Hide progress bar
-                    document.getElementById('progressContainer').style.display = 'none';
-                }
-            };
+                };
+                
+                xhr.open('POST', 'apk_api_up.php', true);
+                xhr.send(formData);
+            });
             
-            xhr.open('POST', 'apk_api_up.php', true);
-            xhr.send(formData);
-        });
-        
-        // Log page load
-        $(document).ready(function() {
+            // Log page load
             $.ajax({
                 url: 'log_api.php',
                 type: 'POST',

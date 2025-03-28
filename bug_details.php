@@ -425,7 +425,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
                                 <i class="fas fa-upload"></i> APK Admin
                             </a>
                             <a href="index1.php" class="<?php echo ($current_page == 'index1.php') ? 'active' : ''; ?>">
-                                <i class="fas fa-list-alt"></i> Test Case Manager
+                                <i class="fas fa-list-alt"></i> TCM
+                            </a>
+							<a href="view_logs.php">
+                                <i class="fas fa-clipboard-list"></i> View Logs
                             </a>
                         </div>
                     </div>

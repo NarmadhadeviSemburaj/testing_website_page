@@ -159,15 +159,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
+        /* Wrapper to hold both sidebar and content */
         .wrapper {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             padding: 20px;
         }
+        /* Add this to your CSS */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+}
 
+.col-md-4 {
+    display: flex;
+    flex-direction: column;
+}
+
+.card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%; /* Ensure card takes full height of its container */
+}
+
+.card-details {
+    flex: 1; /* This makes the details section grow to fill available space */
+}
+
+        /* Sidebar styles */
         .sidebar-container {
             width: 200px;
             height: 100vh;
@@ -181,8 +204,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             left: 20px;
             top: 20px;
             bottom: 20px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
 
+        .sidebar-container.collapsed {
+            transform: translateX(-240px);
+        }
+
+        .sidebar-container.show {
+            transform: translateX(0);
+        }
+
+        /* Content container */
+        .content-container {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            min-height: 100vh;
+            margin-left: 220px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .content-container.expanded {
+            margin-left: 20px;
+        }
+
+        /* Sidebar toggle button */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            left: 3px;
+            top: 20px;
+            z-index: 1050;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Sidebar Links */
         .sidebar a {
             display: block;
             padding: 10px;
@@ -197,33 +269,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background-color: #007bff;
             color: #fff;
         }
-        
         .sidebar a i {
             margin-right: 10px;
         }
 
-        .content-container {
-            flex: 1;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            height: 100vh;
-            margin-left: 220px;
-            overflow-y: auto;
-        }
-        
+        /* Admin section */
         .admin-section h4 {
             font-size: 16px;
             cursor: pointer;
-        }
-        
-        .admin-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background-color 0.3s;
         }
 
+        .admin-section h4:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        .admin-section {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        /* User Info */
         .user-info {
             text-align: center;
             margin-bottom: 20px;
@@ -239,42 +310,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin: 5px 0 0;
             color: #333;
         }
-        
+
+        .admin-links {
+            display: none;
+        }
+
+        /* Card styling */
         .card {
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            background-color: #fff;
-        }
-        
-        .card-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #007bff;
-        }
-        
-        .card-details {
-            margin-bottom: 10px;
-        }
-        
-        .card-details p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #555;
-        }
-        
-        .card-details i {
-            margin-right: 8px;
-            color: #007bff;
-        }
-        
-        .update-btn {
-            text-align: right;
-        }
-        
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    background-color: #fff;
+    height: 100%; /* Ensure card takes full height of its container */
+    display: flex;
+    flex-direction: column;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #007bff;
+}
+
+.card-details {
+    margin-bottom: 10px;
+    flex: 1; /* This makes the details section grow to fill available space */
+}
+
+.card-details p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.card-details i {
+    margin-right: 8px;
+    color: #007bff;
+}
+
+.update-btn {
+    text-align: right;
+    margin-top: auto; /* Pushes the buttons to the bottom */
+}
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+
+.col-md-4 {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 20px;
+}
         .update-btn .btn-warning {
             background-color: green;
             border-color: green;
@@ -312,6 +403,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flex-wrap: wrap;
             gap: 10px;
         }
+		/* Add to your CSS section */
+			#successMessage {
+				text-align: center;
+				padding: 10px;
+				border-radius: 5px;
+			}
+
+			.progress-close-btn {
+				margin-top: 15px;
+				display: none;
+			}
         
         .product-checkbox-grid .form-check {
             flex: 1 1 calc(50% - 10px);
@@ -345,12 +447,124 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .upload-excel-btn:hover {
             background-color: #218838;
         }
+		
+        /* Progress bar styles */
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .progress-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #28a745;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-status {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .progress-cancel-btn {
+            margin-top: 15px;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 767.98px) {
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+            .col-md-4 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .add-testcase-btn, .upload-excel-btn {
+                top: 30px;
+                right: 45px;
+            }
+            .upload-excel-btn {
+                right: 90px;
+            }
+        }
+        
+        @media (min-width: 768px) and (max-width: 1199.98px) {
+            .col-md-4 {
+                flex: 0 0 calc(50% - 10px);
+                max-width: calc(50% - 10px);
+            }
+            .sidebar-container {
+                transform: translateX(-240px);
+            }
+            .sidebar-container.show {
+                transform: translateX(0);
+            }
+            .content-container {
+                margin-left: 20px;
+            }
+            .sidebar-toggle {
+                display: flex;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .col-md-4 {
+                flex: 0 0 calc(33.333333% - 14px);
+                max-width: calc(33.333333% - 14px);
+            }
+            .sidebar-toggle {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div class="wrapper">
         <!-- Sidebar -->
-        <div class="sidebar-container">
+        <div class="sidebar-container" id="sidebarContainer">
             <!-- User Info Section -->
             <div class="user-info">
                 <i class="fas fa-user"></i>
@@ -395,7 +609,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <!-- Main Content -->
-        <div class="content-container">
+        <div class="content-container" id="contentContainer">
             <h3>TCM</h3>
             <!-- + Icon for Adding Test Case -->
             <button class="btn btn-primary add-testcase-btn" data-bs-toggle="modal" data-bs-target="#testCaseModal" onclick="logClientAction('open_add_testcase_modal', 'Opened modal to add new test case')">
@@ -405,6 +619,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="fas fa-upload"></i>
             </button>
             <input type="file" id="excel_file" name="excel_file" accept=".xls, .xlsx" style="display: none;">
+			
 
             <!-- Filters for Product and Version -->
             <form method="POST" class="mb-4" onsubmit="logClientAction('apply_filters', 'Applying test case filters')">
@@ -480,28 +695,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     while ($row = $result->fetch_assoc()) {
                         echo '<div class="col-md-4">
-                                <div class="card">
-                                    <div class="card-title">
-                                        <i class="fas fa-folder"></i> ' . htmlspecialchars($row['Module_name']) . '
-                                    </div>
-                                    <div class="card-details">
-                                        <p><i class="fas fa-box"></i> <strong>Product:</strong> ' . htmlspecialchars($row['Product_name']) . '</p>
-                                        <p><i class="fas fa-code-branch"></i> <strong>Version:</strong> ' . htmlspecialchars($row['Version']) . '</p>
-                                        <p><i class="fas fa-align-left"></i> <strong>Description:</strong> ' . htmlspecialchars($row['description']) . '</p>
-                                        <p><i class="fas fa-check-circle"></i> <strong>Preconditions:</strong> ' . htmlspecialchars($row['preconditions'] ?? 'N/A') . '</p>
-                                        <p><i class="fas fa-list-ol"></i> <strong>Test Steps:</strong> ' . htmlspecialchars($row['test_steps']) . '</p>
-                                        <p><i class="fas fa-clipboard-check"></i> <strong>Expected Results:</strong> ' . htmlspecialchars($row['expected_results']) . '</p>
-                                    </div>
-                                    <div class="update-btn">
-                                        <button class="btn btn-warning btn-sm edit-btn" data-id="' . htmlspecialchars($row['id']) . '" data-bs-toggle="modal" data-bs-target="#testCaseModal" onclick="logClientAction(\'edit_testcase_attempt\', \'Attempted to edit test case ID ' . htmlspecialchars($row['id']) . '\')">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <a href="delete_testcase1.php?id=' . htmlspecialchars($row['id']) . '" class="btn btn-danger btn-sm" onclick="logClientAction(\'delete_testcase_attempt\', \'Attempted to delete test case ID ' . htmlspecialchars($row['id']) . '\'); return confirm(\'Are you sure?\');">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                              </div>';
+                        <div class="card">
+                            <div class="card-title">
+                                <i class="fas fa-folder"></i> ' . htmlspecialchars($row['Module_name']) . '
+                            </div>
+                            <div class="card-details">
+                                <p><i class="fas fa-box"></i> <strong>Product:</strong> ' . htmlspecialchars($row['Product_name']) . '</p>
+                                <p><i class="fas fa-code-branch"></i> <strong>Version:</strong> ' . htmlspecialchars($row['Version']) . '</p>
+                                <p><i class="fas fa-align-left"></i> <strong>Description:</strong> ' . htmlspecialchars($row['description']) . '</p>
+                                <p><i class="fas fa-check-circle"></i> <strong>Preconditions:</strong> ' . htmlspecialchars($row['preconditions'] ?? 'N/A') . '</p>
+                                <p><i class="fas fa-list-ol"></i> <strong>Test Steps:</strong> ' . htmlspecialchars($row['test_steps']) . '</p>
+                                <p><i class="fas fa-clipboard-check"></i> <strong>Expected Results:</strong> ' . htmlspecialchars($row['expected_results']) . '</p>
+                            </div>
+                            <div class="update-btn">
+                                <button class="btn btn-warning btn-sm edit-btn" data-id="' . htmlspecialchars($row['id']) . '" data-bs-toggle="modal" data-bs-target="#testCaseModal" onclick="logClientAction(\'edit_testcase_attempt\', \'Attempted to edit test case ID ' . htmlspecialchars($row['id']) . '\')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <a href="delete_testcase1.php?id=' . htmlspecialchars($row['id']) . '" class="btn btn-danger btn-sm" onclick="logClientAction(\'delete_testcase_attempt\', \'Attempted to delete test case ID ' . htmlspecialchars($row['id']) . '\'); return confirm(\'Are you sure?\');">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                      </div>';
                     }
                 } else {
                     logUserAction(
@@ -597,6 +812,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+	<!-- Progress Bar Modal -->
+<div class="progress-container" id="progressContainer">
+    <div class="progress-content">
+        <h5 id="progressTitle">Uploading Excel File</h5>
+        <div class="progress-bar">
+            <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+        <div class="progress-status" id="progressStatus">Preparing upload...</div>
+        <div id="successMessage" class="alert alert-success mt-3" style="display: none;"></div>
+        <button class="btn btn-secondary progress-cancel-btn" id="cancelUpload">Cancel</button>
+        <button class="btn btn-primary progress-close-btn" id="closeUpload" style="display: none;">Close</button>
+    </div>
+</div>
 
     <script>
         // JavaScript to handle edit button click
@@ -770,44 +998,145 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const adminLinks = document.querySelector('.admin-links');
             adminLinks.style.display = adminLinks.style.display === 'none' ? 'block' : 'none';
         }
-        
-        // Handle Excel file upload
-        document.getElementById("excel_file").addEventListener("change", function() {
-            let fileInput = this;
-            if (fileInput.files.length === 0) {
-                logClientAction('excel_upload_canceled', 'No file selected for upload');
-                return;
+                // Variables for upload tracking
+        let uploadAbortController = null;
+        // Handle Excel file upload with progress tracking
+document.getElementById("excel_file").addEventListener("change", function() {
+    let fileInput = this;
+    if (fileInput.files.length === 0) {
+        logClientAction('excel_upload_canceled', 'No file selected for upload');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const allowedTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    
+    // Validate file type
+    if (!allowedTypes.includes(file.type)) {
+        logClientAction('excel_upload_invalid_type', 'Invalid file type: ' + file.type);
+        alert('Please upload a valid Excel file (.xls or .xlsx)');
+        fileInput.value = ''; // Clear the file input
+        return;
+    }
+
+    // Show progress modal
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressStatus = document.getElementById('progressStatus');
+    const successMessage = document.getElementById('successMessage');
+    const cancelBtn = document.getElementById('cancelUpload');
+    const closeBtn = document.getElementById('closeUpload');
+    const progressTitle = document.getElementById('progressTitle');
+    
+    // Reset UI
+    progressContainer.style.display = 'flex';
+    progressBar.style.width = '0%';
+    progressStatus.textContent = 'Preparing upload...';
+    successMessage.style.display = 'none';
+    cancelBtn.style.display = 'block';
+    closeBtn.style.display = 'none';
+    progressTitle.textContent = 'Uploading Excel File';
+
+    // Log the file upload attempt
+    logClientAction('excel_upload_attempt', 'Attempting to upload Excel file: ' + file.name);
+
+    let formData = new FormData();
+    formData.append("excel_file", file);
+
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percentComplete + '%';
+            progressStatus.textContent = `Uploading: ${percentComplete}%`;
+            
+            // Change progress bar color based on progress
+            if (percentComplete < 30) {
+                progressBar.style.backgroundColor = '#dc3545'; // Red
+            } else if (percentComplete < 70) {
+                progressBar.style.backgroundColor = '#ffc107'; // Yellow
+            } else {
+                progressBar.style.backgroundColor = '#28a745'; // Green
             }
+        }
+    });
 
-            // Log file upload attempt
-            logClientAction('excel_upload_attempt', 'Attempting to upload Excel file: ' + fileInput.files[0].name);
+    xhr.addEventListener('load', function() {
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.status === "success") {
+                progressBar.style.width = '100%';
+                progressBar.style.backgroundColor = '#28a745'; // Green
+                progressStatus.textContent = 'Processing complete!';
+                progressTitle.textContent = 'Upload Successful';
+                
+                // Show success message in the card
+                successMessage.textContent = data.message;
+                successMessage.style.display = 'block';
+                
+                // Hide cancel button, show close button
+                cancelBtn.style.display = 'none';
+                closeBtn.style.display = 'block';
+                
+                // Log successful upload
+                logClientAction('excel_upload_success', 'Successfully uploaded Excel file: ' + file.name);
+                
+                // Auto-close after 3 seconds if not manually closed
+                setTimeout(() => {
+                    if (progressContainer.style.display === 'flex') {
+                        progressContainer.style.display = 'none';
+                        location.reload(); // Refresh to show new data
+                    }
+                }, 3000);
+            } else {
+                progressContainer.style.display = 'none';
+                logClientAction('excel_upload_failed', 'Failed to upload Excel file: ' + (data.message || "Unknown error"));
+                alert(data.message || "Error uploading file");
+            }
+        } catch (e) {
+            progressContainer.style.display = 'none';
+            logClientAction('excel_upload_parse_error', 'Error parsing response: ' + e.message);
+            alert("Error processing server response");
+        }
+        fileInput.value = ''; // Clear the file input
+    });
 
-            let formData = new FormData();
-            formData.append("excel_file", fileInput.files[0]);
+    xhr.addEventListener('error', function() {
+        progressContainer.style.display = 'none';
+        logClientAction('excel_upload_error', 'Network error during upload');
+        alert("Network error occurred during upload");
+        fileInput.value = ''; // Clear the file input
+    });
 
-            console.log("Uploading file:", fileInput.files[0].name);
+    xhr.addEventListener('abort', function() {
+        progressContainer.style.display = 'none';
+        logClientAction('excel_upload_aborted', 'Upload was aborted');
+        fileInput.value = ''; // Clear the file input
+    });
 
-            fetch("upload_excel.php", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success") {
-                    logClientAction('excel_upload_success', 'Successfully uploaded Excel file: ' + fileInput.files[0].name);
-                    alert(data.message);
-                    location.reload(); // Refresh to show new data
-                } else {
-                    logClientAction('excel_upload_failed', 'Failed to upload Excel file: ' + (data.message || "Unknown error"));
-                    alert(data.message);
-                }
-            })
-            .catch(error => {
-                logClientAction('excel_upload_error', 'Error uploading Excel file: ' + error.message);
-                console.error("Error:", error);
-                alert("An error occurred while uploading the file.");
-            });
-        });
+    // Handle close button click
+    closeBtn.addEventListener('click', function() {
+        progressContainer.style.display = 'none';
+        location.reload(); // Refresh to show new data
+    });
+
+    xhr.open('POST', 'upload_excel.php', true);
+    xhr.send(formData);
+});
+// Setup cancel button
+document.getElementById('cancelUpload').addEventListener('click', function() {
+    if (xhr && xhr.readyState !== XMLHttpRequest.DONE) {
+        xhr.abort();
+        logClientAction('excel_upload_canceled', 'User canceled upload');
+        progressStatus.textContent = 'Upload canceled';
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+            fileInput.value = ''; // Clear the file input
+        }, 1000);
+    }
+});
+        
         
         // Clear form when modal is opened for adding new test case
         document.getElementById('testCaseModal').addEventListener('show.bs.modal', function (event) {
@@ -850,6 +1179,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Also log to console for debugging
             console.log(`[CLIENT ACTION] ${actionType}: ${description}`);
         }
+
+        // Sidebar toggle functionality
+        $(document).ready(function() {
+            // Sidebar toggle button
+            $('#sidebarToggle').click(function() {
+                $('#sidebarContainer').toggleClass('show');
+            });
+
+            // Close sidebar when clicking outside on mobile
+            $(document).click(function(e) {
+                if ($(window).width() < 1200) {
+                    if (!$(e.target).closest('#sidebarContainer').length && 
+                        !$(e.target).is('#sidebarToggle') && 
+                        $('#sidebarContainer').hasClass('show')) {
+                        $('#sidebarContainer').removeClass('show');
+                    }
+                }
+            });
+
+            // Handle window resize
+            $(window).resize(function() {
+                if ($(window).width() >= 1200) {
+                    $('#sidebarContainer').removeClass('show');
+                }
+            });
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

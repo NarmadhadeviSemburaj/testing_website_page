@@ -3,7 +3,7 @@ session_start();
 
 // Include logging functions
 include 'log_api.php';
-
+include 'db_config.php';
 // Log deletion attempt initiation
 logUserAction(
     $_SESSION['emp_id'] ?? null,
@@ -19,7 +19,7 @@ logUserAction(
     $_SERVER['HTTP_USER_AGENT']
 );
 
-$conn = new mysqli("localhost", "root", "", "testing_db");
+
 
 if ($conn->connect_error) {
     // Log database connection error
